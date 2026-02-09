@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+:root {
+  --bg-dark: #0f172a;        
+  --card-dark: #1e293b;      
+
+  --primary: #10b981;        
+  --primary-dark: #059669;  
+  --primary-glow: rgba(16, 185, 129, 0.4); 
+  --accent: #34d399;        
+  --danger: #ef4444;         
+  
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  padding: 20px;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 130px; 
+}
+
+h1, h2, h3 { margin: 0; font-weight: 800; }
+
+
+.card {
+  background: var(--card-dark);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  margin-bottom: 15px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+
+input, select {
+  background: transparent;
+  color: white;
+  border: none;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+input::placeholder { color: #475569; }
+
+
+.btn-primary {
+  width: 100%;
+
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 15px var(--primary-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: 0.3s;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 15px;
+  z-index: 100;
+}
+
+.nav-item {
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10px;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.nav-item.active { color: var(--primary); }
+
+.fab-btn {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  background: var(--primary); 
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 25px var(--primary-glow);
+  border: 5px solid var(--bg-dark);
+  color: white;
+  cursor: pointer;
+}
