@@ -52,13 +52,18 @@ const Login = () => {
     }
   };
 
-  // --- UI HELPER STYLES ---
+  // --- UI HELPER STYLES (Fixed) ---
   const inputStyle = {
-    width:'100%', padding:'16px 16px 16px 50px', 
-    borderRadius:'12px', background:'rgba(255, 255, 255, 0.05)', 
+    width:'100%', 
+    padding:'16px 16px 16px 50px', 
+    borderRadius:'12px', 
+    background:'rgba(255, 255, 255, 0.05)', 
     border:'1px solid rgba(255, 255, 255, 0.1)', 
-    color:'white', fontSize:'16px', outline:'none',
-    transition: 'all 0.3s ease'
+    color:'white', 
+    fontSize:'16px', 
+    outline:'none',
+    transition: 'all 0.3s ease',
+    boxSizing: 'border-box' // ✅ YE LINE ADD KI HAI (Ab bahar nahi niklega)
   };
 
   return (
@@ -110,7 +115,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* 🔥 Forgot Password Link Added Here */}
           <div style={{ textAlign: 'right', marginBottom: '30px' }}>
             <Link to="/forgot-password" style={{ color: '#94a3b8', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e)=>e.target.style.color='#10b981'} onMouseOut={(e)=>e.target.style.color='#94a3b8'}>
               Forgot Password?

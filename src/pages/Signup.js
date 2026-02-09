@@ -75,7 +75,7 @@ const Signup = () => {
     }
   };
 
-  // --- UI STYLES ---
+  // --- UI STYLES (Fixed) ---
   const inputContainerStyle = {
     marginBottom: '20px',
     position: 'relative',
@@ -86,12 +86,13 @@ const Signup = () => {
     width: '100%',
     padding: '16px 16px 16px 50px',
     borderRadius: '12px',
-    background: 'rgba(255, 255, 255, 0.05)', // Transparent glass effect
+    background: 'rgba(255, 255, 255, 0.05)', 
     border: '1px solid rgba(255, 255, 255, 0.1)',
     color: 'white',
     fontSize: '16px',
     outline: 'none',
-    transition: 'border-color 0.3s, box-shadow 0.3s'
+    transition: 'border-color 0.3s, box-shadow 0.3s',
+    boxSizing: 'border-box' // ✅ FIXED RIGHT SIDE ISSUE
   };
 
   const iconStyle = {

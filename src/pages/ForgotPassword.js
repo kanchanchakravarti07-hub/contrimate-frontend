@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Send, Key, Lock, CheckCircle } from 'lucide-react';
-import { API_BASE_URL } from '../config'; // Config import zaroor karna
+import { API_BASE_URL } from '../config'; 
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // Step 1: Email, Step 2: OTP & New Pass
+  const [step, setStep] = useState(1); 
   const [loading, setLoading] = useState(false);
   
   const [email, setEmail] = useState('');
@@ -17,7 +17,6 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Hum wahi same send-otp endpoint use karenge jo Signup me kiya tha
       const res = await fetch(`${API_BASE_URL}/api/users/send-otp?email=${email}`, { method: 'POST' });
       if (res.ok) {
         alert(`OTP sent to ${email} 📧`);
@@ -61,12 +60,18 @@ const ForgotPassword = () => {
     }
   };
 
-  // Styles
+  // Styles (Fixed)
   const inputStyle = {
-    width:'100%', padding:'16px 16px 16px 50px', 
-    borderRadius:'12px', background:'rgba(255, 255, 255, 0.05)', 
+    width:'100%', 
+    padding:'16px 16px 16px 50px', 
+    borderRadius:'12px', 
+    background:'rgba(255, 255, 255, 0.05)', 
     border:'1px solid rgba(255, 255, 255, 0.1)', 
-    color:'white', fontSize:'16px', outline:'none', transition: 'all 0.3s ease'
+    color:'white', 
+    fontSize:'16px', 
+    outline:'none', 
+    transition: 'all 0.3s ease',
+    boxSizing: 'border-box' // ✅ FIXED RIGHT SIDE ISSUE
   };
   
   const iconStyle = { position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'#10b981' };
