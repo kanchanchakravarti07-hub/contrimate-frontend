@@ -18,6 +18,7 @@ import Account from './pages/Account';
 import NotificationSettings from './pages/NotificationSettings';
 import Privacy from './pages/Privacy';
 import Help from './pages/Help';
+import ForgotPassword from './pages/ForgotPassword';
 
 const BottomNav = () => {
   const location = useLocation();
@@ -78,6 +79,7 @@ function App() {
           <Route path="/notification-settings" element={<NotificationSettings />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/help" element={<Help />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Routes>
         <BottomNav />
       </div>

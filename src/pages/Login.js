@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Lock, Mail } from 'lucide-react';
-import { API_BASE_URL } from '../config';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,94 +8,128 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ SAME JUGAAD LOGIC
+  const API_BASE_URL = "https://contrimate-backend-production.up.railway.app"; 
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const fullUrl = `${API_BASE_URL}/api/users/all`;
+    console.log("🚀 Trying to connect to:", fullUrl);
 
     try {
-      // 🔴 ONLY CHANGE: localhost → API_BASE_URL
-      const res = await fetch(`${API_BASE_URL}/api/users/all`);
+      const res = await fetch(fullUrl);
+      console.log("📡 Response Status:", res.status); 
+
+      if (!res.ok) {
+        throw new Error(`Server Error: ${res.status}`);
+      }
+
       const users = await res.json();
+      console.log("✅ Users Found:", users.length);
 
       const foundUser = users.find(
         u => u.email.toLowerCase() === email.toLowerCase()
       );
 
       if (foundUser) {
+        if(foundUser.password && foundUser.password !== password) {
+             alert("Wrong Password!");
+             setLoading(false);
+             return;
+        }
         localStorage.setItem('user', JSON.stringify(foundUser));
+        console.log("🎉 Login Success:", foundUser);
         navigate('/home');
       } else {
         alert("Account nahi mila! Pehle Sign Up karo.");
       }
     } catch (error) {
-      console.error("Login Error:", error);
-      alert("Server connect nahi ho raha.");
+      console.error("❌ FINAL LOGIN ERROR:", error);
+      alert(`Connection Failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
+  // --- UI HELPER STYLES ---
+  const inputStyle = {
+    width:'100%', padding:'16px 16px 16px 50px', 
+    borderRadius:'12px', background:'rgba(255, 255, 255, 0.05)', 
+    border:'1px solid rgba(255, 255, 255, 0.1)', 
+    color:'white', fontSize:'16px', outline:'none',
+    transition: 'all 0.3s ease'
+  };
+
   return (
-    <div className="container" style={{display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh'}}>
-      <div className="card" style={{width:'100%', padding:'40px 30px', borderRadius:'24px', boxShadow:'0 20px 40px rgba(0,0,0,0.3)', border:'1px solid rgba(255,255,255,0.05)'}}>
+    <div className="container" style={{display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#0f172a'}}>
+      <div className="card" style={{
+        width:'100%', maxWidth:'400px', padding:'45px 35px', 
+        borderRadius:'24px', background:'#1e293b', 
+        boxShadow:'0 25px 50px -12px rgba(0, 0, 0, 0.5)', 
+        border:'1px solid rgba(255,255,255,0.08)'
+      }}>
+        
         <div style={{textAlign:'center', marginBottom:'40px'}}>
-          <h1
-            style={{
-              fontSize:'2.5rem',
-              fontWeight:'800',
-              background:'linear-gradient(to right, #10b981, #34d399)',
-              WebkitBackgroundClip:'text',
-              WebkitTextFillColor:'transparent'
-            }}
-          >
+          <h1 style={{fontSize:'2.5rem', fontWeight:'800', background:'linear-gradient(to right, #10b981, #34d399)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', margin:0, letterSpacing: '-1px'}}>
             ContriMate
           </h1>
-          <p style={{color:'var(--text-muted)', marginTop:'10px'}}>Welcome back!</p>
+          <p style={{color:'#94a3b8', marginTop:'10px'}}>Welcome back! Please sign in.</p>
         </div>
 
         <form onSubmit={handleLogin}>
           <div style={{marginBottom:'20px'}}>
             <div style={{position:'relative'}}>
-              <Mail style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'var(--primary)'}} size={20}/>
+              <Mail style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'#10b981', pointerEvents:'none'}} size={20}/>
               <input
                 type="email"
                 placeholder="Email Address"
                 value={email}
                 onChange={(e)=>setEmail(e.target.value)}
                 required
-                style={{width:'100%', padding:'16px 16px 16px 50px', borderRadius:'14px', background:'var(--bg-dark)', border:'2px solid var(--border)', color:'white', fontSize:'16px', outline:'none'}}
+                style={inputStyle}
+                onFocus={(e) => {e.target.style.borderColor = '#10b981'; e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)'}}
+                onBlur={(e) => {e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'}}
               />
             </div>
           </div>
 
-          <div style={{marginBottom:'30px'}}>
+          <div style={{marginBottom:'10px'}}>
             <div style={{position:'relative'}}>
-              <Lock style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'var(--primary)'}} size={20}/>
+              <Lock style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'#10b981', pointerEvents:'none'}} size={20}/>
               <input
                 type="password"
                 placeholder="Password"
                 value={password}
                 onChange={(e)=>setPassword(e.target.value)}
                 required
-                style={{width:'100%', padding:'16px 16px 16px 50px', borderRadius:'14px', background:'var(--bg-dark)', border:'2px solid var(--border)', color:'white', fontSize:'16px', outline:'none'}}
+                style={inputStyle}
+                onFocus={(e) => {e.target.style.borderColor = '#10b981'; e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)'}}
+                onBlur={(e) => {e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'}}
               />
             </div>
           </div>
 
+          {/* 🔥 Forgot Password Link Added Here */}
+          <div style={{ textAlign: 'right', marginBottom: '30px' }}>
+            <Link to="/forgot-password" style={{ color: '#94a3b8', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e)=>e.target.style.color='#10b981'} onMouseOut={(e)=>e.target.style.color='#94a3b8'}>
+              Forgot Password?
+            </Link>
+          </div>
+
           <button
             type="submit"
-            className="btn-primary"
             disabled={loading}
-            style={{padding:'16px', borderRadius:'14px', fontSize:'18px', letterSpacing:'1px'}}
+            style={{width:'100%', padding:'16px', borderRadius:'12px', fontSize:'16px', fontWeight:'bold', background:'#10b981', color:'white', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.4)'}}
           >
             {loading ? 'Checking...' : <><LogIn size={20}/> Sign In</>}
           </button>
         </form>
 
-        <div style={{textAlign:'center', marginTop:'25px'}}>
-          <p style={{color:'var(--text-muted)'}}>
+        <div style={{textAlign:'center', marginTop:'30px'}}>
+          <p style={{color:'#94a3b8', fontSize:'14px'}}>
             New here?{' '}
-            <Link to="/signup" style={{color:'var(--primary)', fontWeight:'bold', textDecoration:'none'}}>
+            <Link to="/signup" style={{color:'#10b981', fontWeight:'bold', textDecoration:'none'}}>
               Create Account
             </Link>
           </p>

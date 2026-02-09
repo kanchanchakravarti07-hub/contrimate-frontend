@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Check, Tag, Info } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+
 
 const AddExpense = () => {
   const navigate = useNavigate();
@@ -24,7 +26,7 @@ const AddExpense = () => {
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
-        fetch(`http://localhost:8081/api/users/my-friends?email=${loggedInUser.email}`)
+        fetch(`${API_BASE_URL}/api/users/my-friends?email=${loggedInUser.email}`)
           .then(res => res.json())
           .then(friendsData => {
             const allParticipants = [loggedInUser, ...friendsData];
@@ -102,7 +104,7 @@ const AddExpense = () => {
     };
 
     try {
-      const res = await fetch('http://localhost:8081/api/expenses/add', {
+        const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expenseData)

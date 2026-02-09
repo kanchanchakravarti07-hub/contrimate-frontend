@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081';
+
 function App() {
   
   const [description, setDescription] = useState('');
@@ -19,7 +21,7 @@ function App() {
   
   const fetchData = async () => {
     try {
-      const userRes = await fetch('http://localhost:8081/api/users/all');
+      const userRes = await fetch(`${API_BASE_URL}/api/users/all`);
       const userData = await userRes.json();
       setUsers(userData);
       
@@ -30,7 +32,7 @@ function App() {
         if(!settleReceiver) setSettleReceiver(userData.length > 1 ? userData[1].id : userData[0].id);
       }
 
-      const expRes = await fetch('http://localhost:8081/api/expenses/all');
+      const expRes = await fetch(`${API_BASE_URL}/api/expenses/all`);
       const expData = await expRes.json();
       setExpenses(expData);
     } catch (error) { console.error(error); }
@@ -63,7 +65,7 @@ function App() {
     let data = {};
 
     if (mode === 'EXPENSE') {
-        url = 'http://localhost:8081/api/expenses/add';
+        url = `${API_BASE_URL}/api/expenses/add`;
         data = { groupId: 1, payerId, description, amount };
     } else {
         
@@ -72,7 +74,7 @@ function App() {
             setMessage('');
             return;
         }
-        url = 'http://localhost:8081/api/expenses/settle';
+        url = `${API_BASE_URL}/api/expenses/settle`;
         data = { payerId: settlePayer, receiverId: settleReceiver, amount };
     }
 
@@ -98,7 +100,7 @@ function App() {
     if(!window.confirm("⚠️ Are you sure? Sara hisaab delete ho jayega!")) return;
 
     try {
-      await fetch('http://localhost:8081/api/expenses/clear', {
+      await fetch(`${API_BASE_URL}/api/expenses/clear`, {
         method: 'DELETE'
       });
       fetchData(); 
@@ -112,7 +114,7 @@ function App() {
     if(!window.confirm("Sure delete karna hai?")) return;
 
     try {
-      await fetch(`http://localhost:8081/api/expenses/delete/${id}`, {
+      await fetch(`${API_BASE_URL}/api/expenses/delete/${id}`, {
         method: 'DELETE'
       });
       fetchData(); 
