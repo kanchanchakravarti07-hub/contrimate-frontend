@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Check, Tag, Info } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
-
 const AddExpense = () => {
   const navigate = useNavigate();
 
@@ -15,12 +14,10 @@ const AddExpense = () => {
   const [payerId, setPayerId] = useState('');
   const [splitWithIds, setSplitWithIds] = useState([]);
   
-  // Modes: 'EQUAL' or 'UNEQUAL' (Diff Bill)
   const [splitMode, setSplitMode] = useState('EQUAL'); 
   const [manualAmounts, setManualAmounts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // Categories List
   const categories = ["Food", "Travel", "Shopping", "Entertainment", "Rent", "Bills", "Misc"];
 
   useEffect(() => {
@@ -33,7 +30,6 @@ const AddExpense = () => {
             setUsers(allParticipants);
             if (allParticipants.length > 0) {
                 setPayerId(loggedInUser.id);
-                // Default select everyone
                 setSplitWithIds(allParticipants.map(u => u.id)); 
             }
           })
@@ -65,43 +61,23 @@ const AddExpense = () => {
     let splits = [];
 
     if (splitMode === 'EQUAL') {
-      // EQUAL SPLIT LOGIC
       if (!amount || amount <= 0) return alert("Total Amount sahi daalo!");
       const share = parseFloat((finalTotal / splitWithIds.length).toFixed(2));
       splits = splitWithIds.map(id => ({ user: { id }, amountOwed: share }));
-    
     } else {
-      // 🔥 UNEQUAL (DIFF BILL) LOGIC - FIXED
       let calculatedTotal = 0;
-      
       for (const id of splitWithIds) {
-        // Agar value empty hai to 0 maano
         const val = parseFloat(manualAmounts[id] || 0);
-        
-        // ✅ FIX: Pehle 'val <= 0' check tha, ab sirf negative check hai.
-        // Matlab 0 amount ab valid hai.
         if (val < 0) return alert("Amount negative nahi ho sakta!");
-        
         calculatedTotal += val;
         splits.push({ user: { id }, amountOwed: val });
       }
-
-      // Check: Total bill 0 nahi hona chahiye
-      if (calculatedTotal <= 0) return alert("Total bill 0 nahi ho sakta! Kisi ka toh amount daalo.");
-      
+      if (calculatedTotal <= 0) return alert("Total bill 0 nahi ho sakta!");
       finalTotal = calculatedTotal;
     }
 
     setIsLoading(true);
-    
-    const expenseData = {
-      description,
-      totalAmount: finalTotal,
-      category,
-      paidBy: { id: payerId },
-      group: null, 
-      splits
-    };
+    const expenseData = { description, totalAmount: finalTotal, category, paidBy: { id: payerId }, group: null, splits };
 
     try {
         const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
@@ -109,12 +85,8 @@ const AddExpense = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expenseData)
       });
-      
-      if (res.ok) {
-          navigate('/home');
-      } else {
-          alert("Error saving expense");
-      }
+      if (res.ok) navigate('/home');
+      else alert("Error saving expense");
     } catch (error) {
       console.error(error);
       alert("Server Error");
@@ -124,7 +96,7 @@ const AddExpense = () => {
   };
 
   return (
-    <div className="container" style={{paddingBottom:'100px', background:'#0f172a', minHeight:'100vh', color:'white'}}>
+    <div className="container" style={{padding: '0 20px 140px 20px', background:'#0f172a', minHeight:'100vh', color:'white'}}>
       
       {/* Header */}
       <div style={{display:'flex', alignItems:'center', gap:'15px', padding:'20px 0'}}>
@@ -147,7 +119,7 @@ const AddExpense = () => {
                 type="button"
                 onClick={() => {
                     setSplitMode('UNEQUAL');
-                    setAmount(''); // Reset total amount logic for unequal
+                    setAmount('');
                 }}
                 style={{flex:1, padding:'10px', borderRadius:'10px', border:'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: splitMode === 'UNEQUAL' ? 'white' : '#94a3b8', fontWeight:'600', cursor:'pointer'}}
             >
@@ -156,8 +128,6 @@ const AddExpense = () => {
         </div>
 
         <div className="card" style={{padding:'20px', borderRadius:'20px', background:'#1e293b', marginBottom:'20px', border:'1px solid #334155'}}>
-            
-            {/* Disclaimer for Diff Bill */}
             {splitMode === 'UNEQUAL' && (
                 <div style={{marginBottom:'15px', padding:'10px', background:'rgba(16, 185, 129, 0.1)', borderRadius:'8px', border:'1px solid rgba(16, 185, 129, 0.2)', fontSize:'12px', color:'#10b981', display:'flex', alignItems:'center', gap:'8px'}}>
                     <Info size={14}/>
@@ -165,7 +135,6 @@ const AddExpense = () => {
                 </div>
             )}
 
-            {/* Total Amount Input (Only show in Equal Mode) */}
             {splitMode === 'EQUAL' && (
                 <div style={{borderBottom:'1px solid #334155', paddingBottom:'15px', marginBottom:'15px'}}>
                     <label style={{color:'#94a3b8', fontSize:'11px', letterSpacing:'1px', fontWeight:'bold'}}>TOTAL AMOUNT</label>
@@ -176,13 +145,11 @@ const AddExpense = () => {
                 </div>
             )}
 
-            {/* Description */}
             <div style={{marginBottom:'15px'}}>
                 <label style={{color:'#94a3b8', fontSize:'11px', letterSpacing:'1px', fontWeight:'bold'}}>DESCRIPTION</label>
                 <input type="text" placeholder="e.g. Pizza, Uber" value={description} onChange={(e) => setDescription(e.target.value)} style={{width:'100%', background:'transparent', border:'none', color:'white', fontSize:'16px', outline:'none', marginTop:'5px', padding:'5px 0'}} />
             </div>
 
-            {/* Category */}
             <div>
                 <label style={{color:'#94a3b8', fontSize:'11px', letterSpacing:'1px', display:'flex', alignItems:'center', gap:'5px', fontWeight:'bold'}}><Tag size={12}/> CATEGORY</label>
                 <div style={{display:'flex', gap:'8px', overflowX:'auto', marginTop:'10px', paddingBottom:'5px', scrollbarWidth:'none'}}>
@@ -204,7 +171,6 @@ const AddExpense = () => {
             </div>
         </div>
 
-        {/* Payer Selection */}
         <div className="card" style={{padding:'15px', display:'flex', justifyContent:'space-between', alignItems:'center', borderRadius:'16px', background:'#1e293b', border:'1px solid #334155', marginBottom:'25px'}}>
             <span style={{color:'#94a3b8', fontSize:'14px'}}>Paid by</span>
             <select value={payerId} onChange={(e) => setPayerId(e.target.value)} style={{background:'#0f172a', color:'#10b981', border:'1px solid #334155', padding:'8px 12px', borderRadius:'10px', fontSize:'14px', outline:'none', fontWeight:'bold'}}>
@@ -218,7 +184,6 @@ const AddExpense = () => {
             <Users size={18} color="#10b981"/> Split With
         </h3>
 
-        {/* User Selection List */}
         <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
             {users.map(user => {
                 const isSelected = splitWithIds.includes(user.id);
@@ -243,7 +208,6 @@ const AddExpense = () => {
                         {splitMode === 'EQUAL' ? (
                             isSelected && <Check size={18} color="#10b981" />
                         ) : (
-                            // Input for Diff Bill
                             <div style={{display:'flex', alignItems:'center', gap:'5px', background:'#0f172a', padding:'5px 10px', borderRadius:'8px', border:'1px solid #334155'}}>
                                 <span style={{color:'#10b981', fontSize:'12px'}}>₹</span>
                                 <input 
@@ -263,8 +227,9 @@ const AddExpense = () => {
             })}
         </div>
 
-        <div style={{position:'fixed', bottom:'20px', left:'0', right:'0', padding:'0 20px', zIndex:10}}>
-            <button type="submit" className="btn-primary" disabled={isLoading} style={{height:'55px', width: '100%', borderRadius:'16px', background: '#10b981', color: 'white', border: 'none', fontSize:'16px', fontWeight:'bold', boxShadow:'0 10px 20px rgba(16, 185, 129, 0.3)'}}>
+        {/* ✅ FIXED BUTTON: Position changed to static and margin added */}
+        <div style={{marginTop:'30px'}}>
+            <button type="submit" className="btn-primary" disabled={isLoading} style={{height:'55px', width: '100%', borderRadius:'16px', background: '#10b981', color: 'white', border: 'none', fontSize:'16px', fontWeight:'bold', boxShadow:'0 10px 20px rgba(16, 185, 129, 0.3)', cursor: 'pointer'}}>
                 {isLoading ? 'Saving...' : 'Save Expense'}
             </button>
         </div>

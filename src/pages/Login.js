@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, Lock, Mail, Eye, EyeOff } from 'lucide-react'; // ✅ Eye Icons Imported
+import { LogIn, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // ✅ Toggle State
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const API_BASE_URL = "https://contrimate-backend-production.up.railway.app"; 
@@ -25,6 +25,7 @@ const Login = () => {
       const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
       if (foundUser) {
+        // Yahan simple check: Jo DB mein hai wahi match hona chahiye
         if(foundUser.password && foundUser.password !== password) {
              alert("Wrong Password!");
              setLoading(false);
@@ -44,7 +45,7 @@ const Login = () => {
   };
 
   const inputStyle = {
-    width:'100%', padding:'16px 50px 16px 50px', // Right padding badhaya taaki icon na chupe
+    width:'100%', padding:'16px 50px 16px 50px',
     borderRadius:'12px', background:'rgba(255, 255, 255, 0.05)', 
     border:'1px solid rgba(255, 255, 255, 0.1)', 
     color:'white', fontSize:'16px', outline:'none',
@@ -68,24 +69,17 @@ const Login = () => {
             <input type="email" placeholder="Email Address" value={email} onChange={(e)=>setEmail(e.target.value)} required style={inputStyle} />
           </div>
 
-          <div style={{marginBottom:'10px', position:'relative'}}>
+          <div style={{marginBottom:'20px', position:'relative'}}> {/* Margin thoda kam kiya */}
             <Lock style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'#10b981', pointerEvents:'none'}} size={20}/>
-            
-            {/* ✅ PASSWORD INPUT WITH TOGGLE */}
             <input
-              type={showPassword ? "text" : "password"} // Type Change Logic
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e)=>setPassword(e.target.value)}
               required
               style={inputStyle}
             />
-            
-            {/* ✅ EYE ICON BUTTON */}
-            <div 
-              onClick={() => setShowPassword(!showPassword)}
-              style={{position:'absolute', right:'15px', top:'50%', transform:'translateY(-50%)', cursor:'pointer', color:'#94a3b8'}}
-            >
+            <div onClick={() => setShowPassword(!showPassword)} style={{position:'absolute', right:'15px', top:'50%', transform:'translateY(-50%)', cursor:'pointer', color:'#94a3b8'}}>
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </div>
           </div>
