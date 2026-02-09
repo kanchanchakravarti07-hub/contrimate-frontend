@@ -24,8 +24,11 @@ const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
 
+  // ✅ Updated Logic: Inn sabhi pages par Bottom Bar nahi dikhega
+  const hideNavPaths = ['/', '/login', '/signup', '/forgot-password'];
 
-  if (path === '/login' || path === '/' || path === '/signup') return null;
+  // Agar current path upar wali list mein hai, toh null return karo (Nothing renders)
+  if (hideNavPaths.includes(path)) return null;
 
   return (
     <div className="bottom-nav">
@@ -39,7 +42,10 @@ const BottomNav = () => {
         <span>Groups</span>
       </Link>
 
+      {/* Spacer for FAB */}
       <div style={{width:'50px'}}></div> 
+      
+      {/* Floating Action Button (FAB) */}
       <Link to="/add-expense" className="fab-btn">
         <Plus size={32} strokeWidth={2.5} />
       </Link>
@@ -65,6 +71,7 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           
           <Route path="/home" element={<HomePage />} />
           <Route path="/groups" element={<Groups />} />
@@ -79,8 +86,9 @@ function App() {
           <Route path="/notification-settings" element={<NotificationSettings />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/help" element={<Help />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Routes>
+        
+        {/* Navigation Bar */}
         <BottomNav />
       </div>
     </Router>
