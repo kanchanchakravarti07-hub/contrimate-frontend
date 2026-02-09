@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Check, Tag, Info, User, LayoutGrid, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Users, Check, Tag, Info, User, LayoutGrid, ChevronRight, Edit2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const AddExpense = () => {
   const navigate = useNavigate();
 
-  // FLOW STATES
+  // --- FLOW & DATA STATES ---
   const [flowStep, setFlowStep] = useState('CHOICE'); 
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
 
-  // FORM STATES
+  // --- FORM STATES ---
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food'); 
@@ -44,7 +44,7 @@ const AddExpense = () => {
         setUsers(all);
         setSplitWithIds(all.map(u => u.id));
         setSelectedGroup(null);
-        setFlowStep('FORM'); // Window gayab ho jayegi aur blur hat jayega
+        setFlowStep('FORM');
       });
   };
 
@@ -55,15 +55,37 @@ const AddExpense = () => {
     setFlowStep('FORM');
   };
 
+  const handleManualChange = (userId, val) => {
+    setManualAmounts({ ...manualAmounts, [userId]: val });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // (Existing submit logic remains same...)
+    if (!description) return alert("Description daalo bhai!");
+    
+    let finalTotal = parseFloat(amount);
+    let splits = [];
+
+    if (splitMode === 'EQUAL') {
+      if (!amount || amount <= 0) return alert("Total Amount sahi daalo!");
+      const share = parseFloat((finalTotal / splitWithIds.length).toFixed(2));
+      splits = splitWithIds.map(id => ({ user: { id }, amountOwed: share }));
+    } else {
+      let calculatedTotal = 0;
+      for (const id of splitWithIds) {
+        const val = parseFloat(manualAmounts[id] || 0);
+        calculatedTotal += val;
+        splits.push({ user: { id }, amountOwed: val });
+      }
+      finalTotal = calculatedTotal;
+    }
+
     setIsLoading(true);
     const expenseData = {
-      description, totalAmount: parseFloat(amount), category,
+      description, totalAmount: finalTotal, category,
       paidBy: { id: payerId },
       group: selectedGroup ? { id: selectedGroup.id } : null,
-      splits: splitWithIds.map(id => ({ user: { id }, amountOwed: (parseFloat(amount)/splitWithIds.length) }))
+      splits
     };
 
     try {
@@ -78,98 +100,108 @@ const AddExpense = () => {
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: '#0f172a' }}>
       
-      {/* 1️⃣ CHOICE OVERLAY (The Professional Modal) */}
+      {/* 1️⃣ CHOICE & GROUP LIST MODAL */}
       {(flowStep === 'CHOICE' || flowStep === 'GROUP_LIST') && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backdropFilter: 'blur(8px)', // ✨ Background Blur Effect
-          backgroundColor: 'rgba(15, 23, 42, 0.7)',
-          padding: '20px'
-        }}>
-          
-          {/* Choti Window */}
-          <div style={{
-            width: '100%', maxWidth: '380px', 
-            background: '#1e293b', borderRadius: '28px',
-            padding: '30px', border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: '20px' }}>
+          <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', borderRadius: '32px', padding: '30px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             
             {flowStep === 'CHOICE' ? (
               <>
-                <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'white', marginBottom: '25px', textAlign: 'center' }}>
-                  Add Expense To
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div onClick={handleNoGroup} style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: '0.3s' }}>
-                    <User size={24} color="#10b981" />
-                    <h3 style={{ margin: '10px 0 0 0', fontSize: '16px', color: 'white' }}>Personal / Friends</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '12px', margin: '4px 0 0 0' }}>Split with friends directly</p>
+                <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'white', marginBottom: '30px', textAlign: 'center' }}>Add Expense To</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div onClick={handleNoGroup} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
+                    <User size={28} color="#10b981" />
+                    <h3 style={{ margin: '12px 0 0 0', fontSize: '18px', color: 'white' }}>Personal / Friends</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>Split with friends directly</p>
                   </div>
-                  <div onClick={() => setFlowStep('GROUP_LIST')} style={{ background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
-                    <LayoutGrid size={24} color="#10b981" />
-                    <h3 style={{ margin: '10px 0 0 0', fontSize: '16px', color: 'white' }}>In a Group</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '12px', margin: '4px 0 0 0' }}>Select from your groups</p>
+                  <div onClick={() => setFlowStep('GROUP_LIST')} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
+                    <LayoutGrid size={28} color="#10b981" />
+                    <h3 style={{ margin: '12px 0 0 0', fontSize: '18px', color: 'white' }}>In a Group</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>Select from your groups</p>
                   </div>
                 </div>
               </>
             ) : (
-              /* Group List Window */
               <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                  <ArrowLeft size={20} onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer', color: 'white' }} />
-                  <h3 style={{ margin: 0, color: 'white' }}>Select Group</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px' }}>
+                  <ArrowLeft size={22} onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer', color: 'white' }} />
+                  <h3 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Select Group</h3>
                 </div>
-                <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {groups.map(g => (
-                    <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '14px', cursor: 'pointer' }}>
-                      <span style={{ color: 'white' }}>{g.name}</span>
-                      <ChevronRight size={16} color="#475569" />
+                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '5px' }}>
+                  {groups.length > 0 ? groups.map(g => (
+                    <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '18px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ width: '40px', height: '40px', background: '#10b981', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>{g.name.charAt(0).toUpperCase()}</div>
+                        <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
+                      </div>
+                      <ChevronRight size={18} color="#475569" />
                     </div>
-                  ))}
+                  )) : <p style={{ color: '#94a3b8', textAlign: 'center' }}>No groups found</p>}
                 </div>
               </>
             )}
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <span onClick={() => navigate('/home')} style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer' }}>Cancel</span>
+            <div style={{ textAlign: 'center', marginTop: '25px' }}>
+              <span onClick={() => navigate('/home')} style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}>Cancel</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2️⃣ MAIN FORM PAGE (Visible behind blur) */}
-      <div className="container" style={{ padding: '20px 20px 140px 20px', color: 'white' }}>
+      {/* 2️⃣ MAIN FORM PAGE */}
+      <div className="container" style={{ padding: '0 20px 140px 20px', color: 'white' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0' }}>
-          <ArrowLeft onClick={() => navigate('/home')} />
-          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Add Expense</h2>
+          <ArrowLeft onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer' }} />
+          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>{selectedGroup ? `Group: ${selectedGroup.name}` : 'Add Expense'}</h2>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ opacity: flowStep === 'FORM' ? 1 : 0.4 }}>
-          {/* Card: Amount & Description */}
-          <div style={{ padding: '20px', borderRadius: '24px', background: '#1e293b', border: '1px solid #334155', marginBottom: '20px' }}>
-            <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold' }}>TOTAL AMOUNT</label>
-            <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
-              <span style={{ fontSize: '32px', color: '#10b981', fontWeight: 'bold' }}>₹</span>
-              <input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '32px', fontWeight: 'bold', outline: 'none', marginLeft: '10px' }} />
-            </div>
-            <input type="text" placeholder="What was this for?" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '16px', outline: 'none', borderBottom: '1px solid #334155', padding: '10px 0' }} />
+        <form onSubmit={handleSubmit}>
+          {/* Toggle Split Mode */}
+          <div style={{ display: 'flex', background: '#1e293b', padding: '4px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #334155' }}>
+            <button type="button" onClick={() => setSplitMode('EQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'EQUAL' ? '#334155' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Equal Split</button>
+            <button type="button" onClick={() => { setSplitMode('UNEQUAL'); setAmount(''); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Diff Bill</button>
           </div>
 
-          {/* Members List */}
-          <h3 style={{ fontSize: '16px', margin: '20px 0 15px 0' }}>Split With</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="card" style={{ padding: '25px', borderRadius: '28px', background: '#1e293b', marginBottom: '20px', border: '1px solid #334155' }}>
+            {splitMode === 'EQUAL' && (
+              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '20px' }}>
+                <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>TOTAL AMOUNT</label>
+                <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
+                  <span style={{ fontSize: '36px', color: '#10b981', fontWeight: 'bold' }}>₹</span>
+                  <input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '36px', fontWeight: 'bold', outline: 'none', marginLeft: '12px' }} />
+                </div>
+              </div>
+            )}
+            <div>
+              <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>DESCRIPTION</label>
+              <input type="text" placeholder="e.g. Dinner, Movie" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '18px', outline: 'none', marginTop: '10px' }} />
+            </div>
+          </div>
+
+          <h3 style={{ fontSize: '16px', margin: '25px 0 15px 10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={18} color="#10b981" /> Split With</h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {users.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', background: '#1e293b', borderRadius: '18px', border: '1px solid #334155' }}>
-                <span style={{ color: 'white' }}>{u.name}</span>
-                <Check size={18} color="#10b981" />
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: '#1e293b', borderRadius: '20px', border: '1px solid #334155' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{u.name.charAt(0).toUpperCase()}</div>
+                  <span style={{ fontWeight: '600' }}>{u.name}</span>
+                </div>
+                
+                {splitMode === 'UNEQUAL' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0f172a', padding: '8px 15px', borderRadius: '12px', border: '1px solid #334155' }}>
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>₹</span>
+                    <input type="number" placeholder="0" value={manualAmounts[u.id] || ''} onChange={(e) => handleManualChange(u.id, e.target.value)} style={{ width: '70px', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none', textAlign: 'right' }} />
+                  </div>
+                ) : <Check size={20} color="#10b981" />}
               </div>
             ))}
           </div>
 
-          <button type="submit" disabled={isLoading || flowStep !== 'FORM'} style={{ position: 'fixed', bottom: '30px', left: '20px', right: '20px', height: '60px', borderRadius: '20px', background: '#10b981', color: 'white', border: 'none', fontSize: '16px', fontWeight: 'bold', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.3)' }}>
-            {isLoading ? 'Saving...' : 'Save Expense'}
-          </button>
+          <div style={{ marginTop: '30px' }}>
+            <button type="submit" disabled={isLoading} style={{ height: '65px', width: '100%', borderRadius: '22px', background: '#10b981', color: 'white', border: 'none', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 12px 24px rgba(16, 185, 129, 0.3)', cursor: 'pointer' }}>
+              {isLoading ? 'Saving...' : 'Save Expense'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
