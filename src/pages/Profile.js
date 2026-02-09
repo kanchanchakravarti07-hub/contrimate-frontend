@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User, Mail, Phone, LogOut, ChevronRight, Shield, Bell, HelpCircle, 
-  Edit2, Camera, Wallet, Users 
+  Edit2, Camera, Wallet, Users, Loader 
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -12,6 +12,7 @@ const Profile = () => {
   const [stats, setStats] = useState({ totalSpent: 0, friends: 0, groups: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
+  const [updating, setUpdating] = useState(false); // 🔥 Loading state for update
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -29,7 +30,7 @@ const Profile = () => {
         const [expensesRes, friendsRes, groupsRes] = await Promise.all([
             fetch(`${API_BASE_URL}/api/expenses/user/${userId}`),
             fetch(`${API_BASE_URL}/api/users/my-friends?email=${email}`),
-            fetch(`${API_BASE_URL}/api/groups/all`) 
+            fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${userId}`) // ✅ Updated to your new endpoint
         ]);
 
         const expenses = await expensesRes.json();
@@ -58,15 +59,38 @@ const Profile = () => {
     }
   };
 
-  const handleUpdateProfile = () => {
-      const updatedUser = { ...user, name: newName };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      setIsEditing(false);
-      alert("Profile Updated! ✅");
+  // 🔥 UPDATED: Now sends data to Backend
+  const handleUpdateProfile = async () => {
+      if (!newName.trim()) return alert("Naam toh daal bhai!");
+      
+      setUpdating(true);
+      try {
+          const res = await fetch(`${API_BASE_URL}/api/users/update-profile`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                  id: user.id, 
+                  name: newName.trim() 
+              })
+          });
+
+          if (res.ok) {
+              const updatedUser = { ...user, name: newName.trim() };
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+              setUser(updatedUser);
+              setIsEditing(false);
+              alert("Profile Updated! ✅");
+          } else {
+              alert("Server error: Update fail ho gaya.");
+          }
+      } catch (error) {
+          console.error(error);
+          alert("Connection error!");
+      } finally {
+          setUpdating(false);
+      }
   };
 
-  // 🔥 Navigation map for settings buttons
   const settingsOptions = [
       { icon: <User size={20} color="#3b82f6" />, label: 'Account Settings', path: '/account' },
       { icon: <Bell size={20} color="#f59e0b" />, label: 'Notifications', path: '/notification-settings' },
@@ -101,9 +125,19 @@ const Profile = () => {
         </div>
 
         {isEditing ? (
-            <div style={{display:'flex', gap:'10px', marginBottom:'5px'}}>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} style={{background:'#334155', border:'none', padding:'8px', borderRadius:'8px', color:'white', textAlign:'center', outline:'none'}} />
-                <button onClick={handleUpdateProfile} style={{background:'#10b981', border:'none', borderRadius:'6px', padding:'5px 15px', color:'white', cursor:'pointer', fontWeight:'bold'}}>Save</button>
+            <div style={{display:'flex', gap:'10px', marginBottom:'5px', alignItems:'center'}}>
+                <input 
+                    value={newName} 
+                    onChange={(e) => setNewName(e.target.value)} 
+                    style={{background:'#334155', border:'none', padding:'8px', borderRadius:'8px', color:'white', textAlign:'center', outline:'none'}} 
+                />
+                <button 
+                    onClick={handleUpdateProfile} 
+                    disabled={updating}
+                    style={{background:'#10b981', border:'none', borderRadius:'6px', padding:'8px 15px', color:'white', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center'}}
+                >
+                    {updating ? <Loader size={14} className="animate-spin" /> : 'Save'}
+                </button>
             </div>
         ) : (
             <h3 style={{ margin: '0 0 5px 0', fontSize: '20px', display:'flex', alignItems:'center', gap:'10px' }}>
@@ -134,15 +168,14 @@ const Profile = () => {
           </div>
       </div>
 
-      {/* Menu Options (Updated with Navigation) */}
+      {/* Settings Menu */}
       <h4 style={{ color: '#94a3b8', fontSize: '12px', letterSpacing: '1px', marginBottom: '15px' }}>SETTINGS</h4>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {settingsOptions.map((item, index) => (
               <div 
                 key={index} 
-                onClick={() => navigate(item.path)} // 🔥 Navigate on click
-                className="card" 
+                onClick={() => navigate(item.path)}
                 style={{ 
                   padding: '16px', borderRadius: '16px', background: '#1e293b', 
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', border: '1px solid #334155'
@@ -154,12 +187,6 @@ const Profile = () => {
                   <ChevronRight size={18} color="#64748b" />
               </div>
           ))}
-      </div>
-
-      {/* Version Info */}
-      <div style={{ textAlign: 'center', marginTop: '40px', color: '#475569', fontSize: '12px' }}>
-          <p>Contrimate v1.0.0</p>
-          <p>Made in India</p>
       </div>
 
       {/* Bottom Nav */}
