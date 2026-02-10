@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Check, Tag, Info, User, LayoutGrid, ChevronRight, Edit2 } from 'lucide-react';
+import { ArrowLeft, Users, Check, User, LayoutGrid, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const AddExpense = () => {
@@ -8,50 +8,66 @@ const AddExpense = () => {
 
   // --- FLOW & DATA STATES ---
   const [flowStep, setFlowStep] = useState('CHOICE'); 
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]); // Ye current selected users honge (Group wale ya Friends)
+  const [allUsers, setAllUsers] = useState([]); // Lookup ke liye saare users
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
 
   // --- FORM STATES ---
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Food'); 
+  const [category, setCategory] = useState('Food'); // Default
   const [payerId, setPayerId] = useState('');
-  const [splitWithIds, setSplitWithIds] = useState([]);
   const [splitMode, setSplitMode] = useState('EQUAL'); 
   const [manualAmounts, setManualAmounts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  const categories = ["Food", "Travel", "Shopping", "Entertainment", "Rent", "Bills", "Misc"];
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
         setPayerId(loggedInUser.id);
+
+        // 1. Fetch My Groups
         fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${loggedInUser.id}`)
           .then(res => res.json())
           .then(data => setGroups(data))
-          .catch(err => console.error(err));
+          .catch(err => console.error("Groups Error:", err));
+
+        // 2. Fetch All Users (Taaki Member IDs ko Naam se match kar sakein)
+        fetch(`${API_BASE_URL}/api/users/all`)
+          .then(res => res.json())
+          .then(data => setAllUsers(data))
+          .catch(err => console.error("Users Error:", err));
     }
   }, []);
 
+  // --- OPTION 1: PERSONAL / FRIENDS SPLIT ---
   const handleNoGroup = () => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
+    
     fetch(`${API_BASE_URL}/api/users/my-friends?email=${loggedInUser.email}`)
       .then(res => res.json())
       .then(friends => {
+        // Khud ko aur doston ko list mein daalo
         const all = [loggedInUser, ...friends];
         setUsers(all);
-        setSplitWithIds(all.map(u => u.id));
         setSelectedGroup(null);
         setFlowStep('FORM');
       });
   };
 
+  // --- OPTION 2: GROUP SPLIT (Fixed Logic) ---
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
-    setUsers(group.members);
-    setSplitWithIds(group.members.map(m => m.id));
+
+    // 🔥 MAIN FIX: group.memberIds ko actual user objects me convert karna
+    if (group.memberIds && allUsers.length > 0) {
+        const groupMembers = allUsers.filter(user => group.memberIds.includes(user.id));
+        setUsers(groupMembers);
+    } else {
+        setUsers([]); // Fallback
+    }
+
     setFlowStep('FORM');
   };
 
@@ -62,14 +78,20 @@ const AddExpense = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description) return alert("Description daalo bhai!");
-    
+    if (!amount || amount <= 0) return alert("Amount sahi daalo!");
+
     let finalTotal = parseFloat(amount);
     let splits = [];
 
+    // Filter: Jin users ko select kiya hai (abhi ke liye maan rahe hain sab selected hain)
+    const splitWithIds = users.map(u => u.id); 
+
     if (splitMode === 'EQUAL') {
-      if (!amount || amount <= 0) return alert("Total Amount sahi daalo!");
       const share = parseFloat((finalTotal / splitWithIds.length).toFixed(2));
-      splits = splitWithIds.map(id => ({ user: { id }, amountOwed: share }));
+      splits = splitWithIds.map(id => ({ 
+          user: { id }, // Backend expects User object inside Split
+          amountOwed: share 
+      }));
     } else {
       let calculatedTotal = 0;
       for (const id of splitWithIds) {
@@ -77,52 +99,85 @@ const AddExpense = () => {
         calculatedTotal += val;
         splits.push({ user: { id }, amountOwed: val });
       }
-      finalTotal = calculatedTotal;
+      // Diff Bill me total amount user ke input ka sum hona chahiye
+      if(Math.abs(calculatedTotal - finalTotal) > 10) {
+          return alert(`Amount match nahi ho raha! Total: ${finalTotal}, Split: ${calculatedTotal}`);
+      }
     }
 
     setIsLoading(true);
     const expenseData = {
-      description, totalAmount: finalTotal, category,
+      description,
+      totalAmount: finalTotal,
+      category,
       paidBy: { id: payerId },
       group: selectedGroup ? { id: selectedGroup.id } : null,
-      splits
+      splits: splits
     };
+
+    console.log("Sending Data:", expenseData); // Debugging ke liye
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expenseData)
       });
-      if (res.ok) navigate('/home');
-    } catch (error) { alert("Error saving"); } finally { setIsLoading(false); }
+      
+      if (res.ok) {
+        navigate('/home');
+      } else {
+        const errText = await res.text();
+        alert("Error saving: " + errText);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Network Error saving expense");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', background: '#0f172a' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', background: '#0f172a', fontFamily: 'sans-serif' }}>
       
-      {/* 1️⃣ CHOICE & GROUP LIST MODAL */}
+      {/* 1️⃣ CHOICE & GROUP LIST MODAL (OVERLAY) */}
       {(flowStep === 'CHOICE' || flowStep === 'GROUP_LIST') && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: '20px' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: '20px' }}>
           <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', borderRadius: '32px', padding: '30px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             
             {flowStep === 'CHOICE' ? (
               <>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'white', marginBottom: '30px', textAlign: 'center' }}>Add Expense To</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div onClick={handleNoGroup} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
-                    <User size={28} color="#10b981" />
-                    <h3 style={{ margin: '12px 0 0 0', fontSize: '18px', color: 'white' }}>Personal / Friends</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>Split with friends directly</p>
+                  
+                  {/* Option 1: Friends */}
+                  <div onClick={handleNoGroup} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}>
+                        <User size={28} color="#10b981" />
+                    </div>
+                    <div>
+                        <h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>Personal / Friends</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Split with friends directly</p>
+                    </div>
                   </div>
-                  <div onClick={() => setFlowStep('GROUP_LIST')} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}>
-                    <LayoutGrid size={28} color="#10b981" />
-                    <h3 style={{ margin: '12px 0 0 0', fontSize: '18px', color: 'white' }}>In a Group</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>Select from your groups</p>
+
+                  {/* Option 2: Groups */}
+                  <div onClick={() => setFlowStep('GROUP_LIST')} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                     <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}>
+                        <LayoutGrid size={28} color="#10b981" />
+                    </div>
+                    <div>
+                        <h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>In a Group</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Select from your groups</p>
+                    </div>
                   </div>
+
                 </div>
               </>
             ) : (
               <>
+                {/* Group Selection List */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px' }}>
                   <ArrowLeft size={22} onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer', color: 'white' }} />
                   <h3 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Select Group</h3>
@@ -131,7 +186,9 @@ const AddExpense = () => {
                   {groups.length > 0 ? groups.map(g => (
                     <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '18px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ width: '40px', height: '40px', background: '#10b981', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>{g.name.charAt(0).toUpperCase()}</div>
+                        <div style={{ width: '40px', height: '40px', background: '#10b981', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                            {g.name ? g.name.charAt(0).toUpperCase() : 'G'}
+                        </div>
                         <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
                       </div>
                       <ChevronRight size={18} color="#475569" />
@@ -147,30 +204,35 @@ const AddExpense = () => {
         </div>
       )}
 
-      {/* 2️⃣ MAIN FORM PAGE */}
-      <div className="container" style={{ padding: '0 20px 140px 20px', color: 'white' }}>
+      {/* 2️⃣ MAIN FORM PAGE (Visible when flowStep === 'FORM') */}
+      {flowStep === 'FORM' && (
+      <div className="container" style={{ padding: '0 20px 140px 20px', color: 'white', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0' }}>
           <ArrowLeft onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer' }} />
-          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>{selectedGroup ? `Group: ${selectedGroup.name}` : 'Add Expense'}</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>
+            {selectedGroup ? `Group: ${selectedGroup.name}` : 'Add Expense'}
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Toggle Split Mode */}
           <div style={{ display: 'flex', background: '#1e293b', padding: '4px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #334155' }}>
-            <button type="button" onClick={() => setSplitMode('EQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'EQUAL' ? '#334155' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Equal Split</button>
-            <button type="button" onClick={() => { setSplitMode('UNEQUAL'); setAmount(''); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Diff Bill</button>
+            <button type="button" onClick={() => setSplitMode('EQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'EQUAL' ? '#334155' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Equal Split</button>
+            <button type="button" onClick={() => { setSplitMode('UNEQUAL'); setAmount(''); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Diff Bill</button>
           </div>
 
           <div className="card" style={{ padding: '25px', borderRadius: '28px', background: '#1e293b', marginBottom: '20px', border: '1px solid #334155' }}>
-            {splitMode === 'EQUAL' && (
-              <div style={{ borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '20px' }}>
+            
+            {/* Amount Input */}
+            <div style={{ borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '20px' }}>
                 <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>TOTAL AMOUNT</label>
                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
                   <span style={{ fontSize: '36px', color: '#10b981', fontWeight: 'bold' }}>₹</span>
                   <input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '36px', fontWeight: 'bold', outline: 'none', marginLeft: '12px' }} />
                 </div>
-              </div>
-            )}
+            </div>
+
+            {/* Description Input */}
             <div>
               <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>DESCRIPTION</label>
               <input type="text" placeholder="e.g. Dinner, Movie" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '18px', outline: 'none', marginTop: '10px' }} />
@@ -180,10 +242,12 @@ const AddExpense = () => {
           <h3 style={{ fontSize: '16px', margin: '25px 0 15px 10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={18} color="#10b981" /> Split With</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {users.map(u => (
+            {users.length > 0 ? users.map(u => (
               <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: '#1e293b', borderRadius: '20px', border: '1px solid #334155' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{u.name.charAt(0).toUpperCase()}</div>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white' }}>
+                      {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                  </div>
                   <span style={{ fontWeight: '600' }}>{u.name}</span>
                 </div>
                 
@@ -194,16 +258,17 @@ const AddExpense = () => {
                   </div>
                 ) : <Check size={20} color="#10b981" />}
               </div>
-            ))}
+            )) : <p style={{color: '#64748b', textAlign: 'center'}}>No members found</p>}
           </div>
 
           <div style={{ marginTop: '30px' }}>
-            <button type="submit" disabled={isLoading} style={{ height: '65px', width: '100%', borderRadius: '22px', background: '#10b981', color: 'white', border: 'none', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 12px 24px rgba(16, 185, 129, 0.3)', cursor: 'pointer' }}>
+            <button type="submit" disabled={isLoading} style={{ height: '65px', width: '100%', borderRadius: '22px', background: isLoading ? '#334155' : '#10b981', color: 'white', border: 'none', fontSize: '18px', fontWeight: 'bold', boxShadow: isLoading ? 'none' : '0 12px 24px rgba(16, 185, 129, 0.3)', cursor: isLoading ? 'not-allowed' : 'pointer', transition: '0.3s' }}>
               {isLoading ? 'Saving...' : 'Save Expense'}
             </button>
           </div>
         </form>
       </div>
+      )}
     </div>
   );
 };
