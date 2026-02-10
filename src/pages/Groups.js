@@ -12,7 +12,7 @@ const Groups = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [showFriendModal, setShowFriendModal] = useState(false); // 🔥 Modal State
+  const [showFriendModal, setShowFriendModal] = useState(false); 
   
   const [viewFriend, setViewFriend] = useState(null);
   const [friendStats, setFriendStats] = useState({ spent: 0, friendsCount: 0 });
@@ -85,7 +85,6 @@ const Groups = () => {
     }
   }, [viewFriend]);
 
-  // 🔥 Verification Logic
   const handleVerifyUPI = () => {
     if (!newFriendUPI.includes('@')) return alert("Invalid UPI Format!");
     setIsVerifying(true);
@@ -100,19 +99,28 @@ const Groups = () => {
   };
 
   const handleSendRequest = async () => {
-    if(!newFriendEmail || !isUpiVerified) return alert("Verify UPI and enter Email first!");
+    // 🔥 FIXED: Added trim and lowercase for better matching
+    const cleanEmail = newFriendEmail.trim().toLowerCase();
+    if(!cleanEmail || !isUpiVerified) return alert("Verify UPI and enter Email first!");
+    
     try {
         const res = await fetch(`${API_BASE_URL}/api/users/add-friend`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ myEmail: currentUser.email, friendEmail: newFriendEmail.trim().toLowerCase() })
+            body: JSON.stringify({ 
+                myEmail: currentUser.email, 
+                friendEmail: cleanEmail 
+            })
         });
         if(res.ok) {
             alert("Friend Request Sent! 📩");
             setShowFriendModal(false);
+            setNewFriendEmail('');
+            setNewFriendUPI('');
+            setIsUpiVerified(false);
             fetchData();
         } else {
-            alert("User not found or already a friend!");
+            alert("User not found or already a friend! Check email carefully.");
         }
     } catch (err) { alert("Server Error"); }
   };
@@ -151,7 +159,6 @@ const Groups = () => {
 
   return (
     <div className="container" style={{paddingBottom:'100px', background:'#0f172a', minHeight:'100vh', color:'white'}}>
-      {/* ... (Tabs Header Same) ... */}
       <div style={{padding:'20px 0'}}>
         <h2 style={{fontSize:'24px', fontWeight:'800', marginBottom:'20px'}}>Community</h2>
         <div style={{display:'flex', background:'#1e293b', padding:'5px', borderRadius:'14px', border:'1px solid #334155'}}>
@@ -193,44 +200,70 @@ const Groups = () => {
 
             {/* FRIENDS TAB */}
             {activeTab === 'FRIENDS' && (
-                <>
-                    {/* ... (Pending Requests Section) ... */}
+                <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
+                    
+                    {/* INCOMING REQUESTS */}
                     {incomingRequests.length > 0 && (
-                        <div style={{marginBottom:'20px'}}>
-                            <h4 style={{color:'#f43f5e', fontSize:'12px', marginBottom:'10px', letterSpacing:'1px', fontWeight:'bold'}}>PENDING REQUESTS</h4>
+                        <div>
+                            <h4 style={{fontSize:'12px', color:'#f43f5e', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>PENDING FOR YOU</h4>
                             {incomingRequests.map(req => (
-                                <div key={req.id} className="card" style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(244, 63, 94, 0.3)', background:'rgba(244, 63, 94, 0.1)', borderRadius:'16px', marginBottom:'10px'}}>
-                                     <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                        {renderAvatar(req.user, '35px')}
-                                        <span style={{fontSize:'14px'}}>{req.user.name}</span>
+                                <div key={req.id} style={{padding:'16px', background:'rgba(244, 63, 94, 0.05)', borderRadius:'20px', border:'1px solid rgba(244, 63, 94, 0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px'}}>
+                                     <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                        {renderAvatar(req.user, '42px')}
+                                        <div>
+                                            <p style={{margin:0, fontWeight:'700', fontSize:'14px'}}>{req.user.name}</p>
+                                            <p style={{margin:0, fontSize:'11px', color:'#94a3b8'}}>Wants to be friends</p>
+                                        </div>
                                      </div>
-                                     <button style={{background:'#10b981', color:'white', border:'none', padding:'5px 10px', borderRadius:'8px', fontSize:'12px', fontWeight:'bold'}}>Accept</button>
+                                     <button style={{background:'#10b981', color:'white', border:'none', padding:'8px 16px', borderRadius:'10px', fontWeight:'bold', fontSize:'12px'}}>Accept</button>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {friends.length > 0 ? friends.map(friend => (
-                        <div key={friend.id} style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155', marginBottom:'10px'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                                {renderAvatar(friend, '45px')}
-                                <div>
-                                    <h4 style={{margin:0, fontSize:'15px'}}>{friend.name}</h4>
-                                    <span style={{fontSize:'12px', color:'#94a3b8'}}>{friend.email}</span>
+                    {/* SENT REQUESTS */}
+                    {sentRequests.length > 0 && (
+                        <div>
+                            <h4 style={{fontSize:'12px', color:'#3b82f6', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>SENT REQUESTS</h4>
+                            {sentRequests.map(req => (
+                                <div key={req.id} style={{padding:'14px 18px', background:'#1e293b', borderRadius:'18px', border:'1px solid #334155', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px', opacity: 0.85}}>
+                                    <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                        {renderAvatar(req.friend, '38px')}
+                                        <span style={{fontSize:'14px', fontWeight:'600'}}>{req.friend.name}</span>
+                                    </div>
+                                    <div style={{display:'flex', alignItems:'center', gap:'6px', color:'#64748b', fontSize:'11px', fontWeight: 'bold'}}>
+                                        <Clock size={12}/> Pending
+                                    </div>
                                 </div>
-                            </div>
-                            <div style={{display:'flex', gap:'8px'}}>
-                                <button onClick={() => setViewFriend(friend)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Eye size={16} color="#3b82f6"/></button>
-                                <button onClick={() => handleDelete('USER', friend.id)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Trash2 size={16} color="#f43f5e"/></button>
-                            </div>
-                        </div>
-                    )) : (
-                        <div style={{textAlign:'center', marginTop:'60px', opacity: 0.6}}>
-                            <UserPlus size={40} color="#64748b" style={{marginBottom:'10px'}}/>
-                            <h3 style={{margin:0, fontSize:'18px'}}>No friends yet</h3>
+                            ))}
                         </div>
                     )}
-                </>
+
+                    {/* ACTUAL FRIENDS */}
+                    <div>
+                        <h4 style={{fontSize:'12px', color:'#64748b', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>MY FRIENDS</h4>
+                        {friends.length > 0 ? friends.map(friend => (
+                            <div key={friend.id} style={{padding:'18px', background:'#1e293b', borderRadius:'22px', border:'1px solid #334155', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
+                                <div style={{display:'flex', alignItems:'center', gap:'14px'}}>
+                                    {renderAvatar(friend, '48px')}
+                                    <div>
+                                        <h4 style={{margin:0, fontSize:'15px'}}>{friend.name}</h4>
+                                        <span style={{fontSize:'12px', color:'#94a3b8'}}>{friend.email}</span>
+                                    </div>
+                                </div>
+                                <div style={{display:'flex', gap:'8px'}}>
+                                    <button onClick={() => setViewFriend(friend)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Eye size={16} color="#3b82f6"/></button>
+                                    <button onClick={() => handleDelete('USER', friend.id)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Trash2 size={16} color="#f43f5e"/></button>
+                                </div>
+                            </div>
+                        )) : (
+                            <div style={{textAlign:'center', marginTop:'40px', opacity: 0.6}}>
+                                <UserPlus size={40} color="#64748b" style={{marginBottom:'10px'}}/>
+                                <h3 style={{margin:0, fontSize:'18px'}}>No friends yet</h3>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
       )}
@@ -242,7 +275,7 @@ const Groups = () => {
         </button>
       </div>
 
-      {/* 🔥 ADD FRIEND MODAL (THIS WAS MISSING) */}
+      {/* ADD FRIEND MODAL */}
       {showFriendModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
@@ -272,8 +305,7 @@ const Groups = () => {
         </div>
       )}
 
-      {/* ... (Existing Modals: Profile & Group) ... */}
-      {/* (Keep Group Modal and Profile Modal as they were) */}
+      {/* PROFILE MODAL */}
       {viewFriend && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'350px', background:'#1e293b', borderRadius:'24px', border:'1px solid #334155', overflow:'hidden'}}>
@@ -302,6 +334,7 @@ const Groups = () => {
         </div>
       )}
 
+      {/* GROUP MODAL */}
       {showGroupModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
@@ -326,7 +359,6 @@ const Groups = () => {
             </div>
         </div>
       )}
-
     </div>
   );
 };
