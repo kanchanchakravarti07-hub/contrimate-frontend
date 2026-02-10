@@ -34,13 +34,12 @@ const Groups = () => {
       setCurrentUser(user);
 
       const [groupsRes, friendsRes, incReqRes, sentReqRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${user.id}`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/api/users/my-friends?email=${user.email}`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/api/users/pending-requests?email=${user.email}`).then(res => res.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/api/users/sent-requests?email=${user.email}`).then(res => res.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${user.id}`).then(res => res.ok ? res.json() : []),
+        fetch(`${API_BASE_URL}/api/users/my-friends?email=${user.email}`).then(res => res.ok ? res.json() : []),
+        fetch(`${API_BASE_URL}/api/users/pending-requests?email=${user.email}`).then(res => res.ok ? res.json() : []),
+        fetch(`${API_BASE_URL}/api/users/sent-requests?email=${user.email}`).then(res => res.ok ? res.json() : [])
       ]);
       
-      // Safety Check: Ensure data is array before setting
       setGroups(Array.isArray(groupsRes) ? groupsRes : []);
       setFriends(Array.isArray(friendsRes) ? friendsRes : []);
       setIncomingRequests(Array.isArray(incReqRes) ? incReqRes : []);
@@ -49,6 +48,8 @@ const Groups = () => {
       setLoading(false);
     } catch (err) {
       console.error("Error loading data", err);
+      setGroups([]);
+      setFriends([]);
       setLoading(false);
     }
   };
@@ -70,8 +71,8 @@ const Groups = () => {
   useEffect(() => {
     if (viewFriend) {
         setStatsLoading(true);
-        const expensePromise = fetch(`${API_BASE_URL}/api/expenses/user/${viewFriend.id}`).then(res => res.json()).catch(() => []);
-        const friendListPromise = fetch(`${API_BASE_URL}/api/users/my-friends?email=${viewFriend.email}`).then(res => res.json()).catch(() => []);
+        const expensePromise = fetch(`${API_BASE_URL}/api/expenses/user/${viewFriend.id}`).then(res => res.ok ? res.json() : []);
+        const friendListPromise = fetch(`${API_BASE_URL}/api/users/my-friends?email=${viewFriend.email}`).then(res => res.ok ? res.json() : []);
 
         Promise.all([expensePromise, friendListPromise])
             .then(([expensesData, friendsData]) => {
@@ -188,7 +189,6 @@ const Groups = () => {
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
             
-            {/* SAFE MAP: Array.isArray check added */}
             {activeTab === 'GROUPS' && Array.isArray(groups) && groups.map(group => (
                  <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>

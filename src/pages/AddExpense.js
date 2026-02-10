@@ -28,11 +28,12 @@ const AddExpense = () => {
     if (loggedInUser) {
         setPayerId(loggedInUser.id);
         
+        // Crash Proof Fetching
         fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${loggedInUser.id}`)
-          .then(res => res.json())
+          .then(res => res.ok ? res.json() : [])
           .then(data => {
-              if(Array.isArray(data)) setGroups(data);
-              else setGroups([]); // Crash proof
+              // Ensure data is always an array
+              setGroups(Array.isArray(data) ? data : []);
           })
           .catch(err => {
               console.error(err);
@@ -40,8 +41,8 @@ const AddExpense = () => {
           });
 
         fetch(`${API_BASE_URL}/api/users/all`)
-          .then(res => res.json())
-          .then(data => setAllUsers(data))
+          .then(res => res.ok ? res.json() : [])
+          .then(data => setAllUsers(Array.isArray(data) ? data : []))
           .catch(err => console.error(err));
     }
   }, []);
@@ -55,13 +56,18 @@ const AddExpense = () => {
   const handleNoGroup = () => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     fetch(`${API_BASE_URL}/api/users/my-friends?email=${loggedInUser.email}`)
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : [])
       .then(friends => {
         const safeFriends = Array.isArray(friends) ? friends : [];
         const all = [loggedInUser, ...safeFriends];
         initializeUsers(all);
         setSelectedGroup(null);
         setFlowStep('FORM');
+      })
+      .catch(() => {
+          initializeUsers([loggedInUser]);
+          setSelectedGroup(null);
+          setFlowStep('FORM');
       });
   };
 

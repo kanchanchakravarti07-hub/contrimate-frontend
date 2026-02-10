@@ -24,10 +24,10 @@ const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
 
-  // ✅ Updated Logic: Inn sabhi pages par Bottom Bar nahi dikhega
+  
   const hideNavPaths = ['/', '/login', '/signup', '/forgot-password'];
 
-  // Agar current path upar wali list mein hai, toh null return karo (Nothing renders)
+  
   if (hideNavPaths.includes(path)) return null;
 
   return (
@@ -88,7 +88,7 @@ function App() {
           <Route path="/help" element={<Help />} />
         </Routes>
         
-        {/* Navigation Bar */}
+        
         <BottomNav />
       </div>
     </Router>
