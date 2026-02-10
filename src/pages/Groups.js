@@ -85,6 +85,26 @@ const Groups = () => {
     }
   }, [viewFriend]);
 
+  // 🔥 ACCEPT REQUEST LOGIC
+  const handleAcceptRequest = async (requestId) => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/users/accept-friend`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId: requestId })
+        });
+        if (res.ok) {
+            alert("Dost ban gaya bhai! ✅");
+            fetchData(); 
+        } else {
+            alert("Error: Accept nahi ho paya.");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Server Error!");
+    }
+  };
+
   const handleVerifyUPI = () => {
     if (!newFriendUPI.includes('@')) return alert("Invalid UPI Format!");
     setIsVerifying(true);
@@ -99,7 +119,6 @@ const Groups = () => {
   };
 
   const handleSendRequest = async () => {
-    // 🔥 FIXED: Added trim and lowercase for better matching
     const cleanEmail = newFriendEmail.trim().toLowerCase();
     if(!cleanEmail || !isUpiVerified) return alert("Verify UPI and enter Email first!");
     
@@ -215,7 +234,12 @@ const Groups = () => {
                                             <p style={{margin:0, fontSize:'11px', color:'#94a3b8'}}>Wants to be friends</p>
                                         </div>
                                      </div>
-                                     <button style={{background:'#10b981', color:'white', border:'none', padding:'8px 16px', borderRadius:'10px', fontWeight:'bold', fontSize:'12px'}}>Accept</button>
+                                     <button 
+                                        onClick={() => handleAcceptRequest(req.id)}
+                                        style={{background:'#10b981', color:'white', border:'none', padding:'8px 16px', borderRadius:'10px', fontWeight:'bold', fontSize:'12px', cursor:'pointer'}}
+                                     >
+                                        Accept
+                                     </button>
                                 </div>
                             ))}
                         </div>
@@ -334,7 +358,6 @@ const Groups = () => {
         </div>
       )}
 
-      {/* GROUP MODAL */}
       {showGroupModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
