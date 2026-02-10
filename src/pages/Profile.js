@@ -12,7 +12,7 @@ const Profile = () => {
   const [stats, setStats] = useState({ totalSpent: 0, friends: 0, groups: 0 });
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState('');
-  const [updating, setUpdating] = useState(false); // 🔥 Loading state for update
+  const [updating, setUpdating] = useState(false); 
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem('user'));
@@ -30,7 +30,7 @@ const Profile = () => {
         const [expensesRes, friendsRes, groupsRes] = await Promise.all([
             fetch(`${API_BASE_URL}/api/expenses/user/${userId}`),
             fetch(`${API_BASE_URL}/api/users/my-friends?email=${email}`),
-            fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${userId}`) // ✅ Updated to your new endpoint
+            fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${userId}`)
         ]);
 
         const expenses = await expensesRes.json();
@@ -59,9 +59,9 @@ const Profile = () => {
     }
   };
 
-  // 🔥 UPDATED: Now sends data to Backend
-  const handleUpdateProfile = async () => {
-      if (!newName.trim()) return alert("Naam toh daal bhai!");
+  // 🔥 UPDATED: Now supports Name + Photo
+  const handleUpdateProfile = async (photoBase64 = null) => {
+      if (!newName.trim() && !photoBase64) return;
       
       setUpdating(true);
       try {
@@ -70,16 +70,17 @@ const Profile = () => {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                   id: user.id, 
-                  name: newName.trim() 
+                  name: newName.trim(),
+                  profilePic: photoBase64 || user.profilePic // Photo logic added
               })
           });
 
           if (res.ok) {
-              const updatedUser = { ...user, name: newName.trim() };
+              const updatedUser = { ...user, name: newName.trim(), profilePic: photoBase64 || user.profilePic };
               localStorage.setItem('user', JSON.stringify(updatedUser));
               setUser(updatedUser);
               setIsEditing(false);
-              alert("Profile Updated! ✅");
+              if(!photoBase64) alert("Profile Updated! ✅");
           } else {
               alert("Server error: Update fail ho gaya.");
           }
@@ -89,6 +90,18 @@ const Profile = () => {
       } finally {
           setUpdating(false);
       }
+  };
+
+  // 🔥 NEW: Handle Photo Selection
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            handleUpdateProfile(reader.result); // Send Base64 to update
+        };
+        reader.readAsDataURL(file);
+    }
   };
 
   const settingsOptions = [
@@ -101,7 +114,6 @@ const Profile = () => {
   return (
     <div className="container" style={{ paddingBottom: '100px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
       
-      {/* Header */}
       <div style={{ padding: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>My Profile</h2>
         <div onClick={handleLogout} style={{ background: 'rgba(244, 63, 94, 0.1)', padding: '10px', borderRadius: '12px', cursor: 'pointer' }}>
@@ -109,19 +121,25 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Profile Card */}
       <div className="card" style={{ 
           background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', 
           padding: '25px', borderRadius: '24px', border: '1px solid #334155', 
           display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px'
       }}>
         <div style={{ position: 'relative', marginBottom: '15px' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold', color: 'white', border: '4px solid #0f172a' }}>
-                {user?.name?.charAt(0).toUpperCase()}
+            {/* 🔥 UPDATED: Shows Profile Pic if exists */}
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold', color: 'white', border: '4px solid #0f172a', overflow: 'hidden' }}>
+                {user?.profilePic ? (
+                    <img src={user.profilePic} alt="Profile" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                ) : (
+                    user?.name?.charAt(0).toUpperCase()
+                )}
             </div>
-            <div style={{ position: 'absolute', bottom: '0', right: '0', background: '#3b82f6', padding: '6px', borderRadius: '50%', border: '2px solid #0f172a' }}>
+            {/* 🔥 UPDATED: Hidden file input on Camera click */}
+            <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#3b82f6', padding: '6px', borderRadius: '50%', border: '2px solid #0f172a', cursor:'pointer' }}>
                 <Camera size={14} color="white" />
-            </div>
+                <input type="file" accept="image/*" onChange={handlePhotoChange} style={{display:'none'}} />
+            </label>
         </div>
 
         {isEditing ? (
@@ -132,7 +150,7 @@ const Profile = () => {
                     style={{background:'#334155', border:'none', padding:'8px', borderRadius:'8px', color:'white', textAlign:'center', outline:'none'}} 
                 />
                 <button 
-                    onClick={handleUpdateProfile} 
+                    onClick={() => handleUpdateProfile()} 
                     disabled={updating}
                     style={{background:'#10b981', border:'none', borderRadius:'6px', padding:'8px 15px', color:'white', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center'}}
                 >
@@ -149,7 +167,6 @@ const Profile = () => {
         <p style={{ margin: 0, color: '#94a3b8', fontSize: '13px' }}>{user?.email}</p>
       </div>
 
-      {/* Stats Row */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
           <div style={{ flex: 1, background: '#1e293b', padding: '15px', borderRadius: '16px', border: '1px solid #334155', textAlign: 'center' }}>
               <Wallet size={20} color="#10b981" style={{ marginBottom: '5px' }} />
@@ -168,7 +185,6 @@ const Profile = () => {
           </div>
       </div>
 
-      {/* Settings Menu */}
       <h4 style={{ color: '#94a3b8', fontSize: '12px', letterSpacing: '1px', marginBottom: '15px' }}>SETTINGS</h4>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -189,7 +205,6 @@ const Profile = () => {
           ))}
       </div>
 
-      {/* Bottom Nav */}
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: '70px', background: '#0f172a', borderTop: '1px solid #334155', display: 'flex', justifyContent: 'space-around', alignItems: 'center', zIndex: 5 }}>
         {['Home', 'Groups', 'Settle', 'Profile'].map((item) => (
             <div key={item} onClick={() => item === 'Profile' ? null : navigate(`/${item.toLowerCase()}`)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: item === 'Profile' ? 1 : 0.5 }}>

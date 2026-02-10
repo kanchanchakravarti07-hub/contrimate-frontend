@@ -4,7 +4,6 @@ import { API_BASE_URL } from '../config';
 
 const Groups = () => {
   const [activeTab, setActiveTab] = useState('GROUPS');
-  
   const [groups, setGroups] = useState([]);
   const [friends, setFriends] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState([]);
@@ -27,7 +26,6 @@ const Groups = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUpiVerified, setIsUpiVerified] = useState(false);
 
-  // --- FETCH DATA ---
   const fetchData = async () => {
     try {
       const userJson = localStorage.getItem('user');
@@ -56,7 +54,19 @@ const Groups = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // --- STATS LOGIC ---
+  // 🔥 Avatar rendering helper
+  const renderAvatar = (userObj, size = '40px') => {
+    return (
+      <div style={{ width: size, height: size, borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden', border: '1px solid #475569' }}>
+        {userObj?.profilePic ? (
+          <img src={userObj.profilePic} alt="pfp" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span style={{color:'white'}}>{userObj?.name?.charAt(0).toUpperCase()}</span>
+        )}
+      </div>
+    );
+  };
+
   useEffect(() => {
     if (viewFriend) {
         setStatsLoading(true);
@@ -76,7 +86,6 @@ const Groups = () => {
     }
   }, [viewFriend]);
 
-  // --- HANDLERS ---
   const handleVerifyUPI = () => {
     if (!newFriendUPI.includes('@')) return alert("Invalid Format!");
     setIsVerifying(true);
@@ -93,9 +102,7 @@ const Groups = () => {
   const handleCreateGroup = async () => {
     if (!groupName) return alert("Group name daalo bhai!");
     if (selectedFriendIds.length === 0) return alert("Kam se kam ek dost select karo!");
-    
     const memberIds = [...selectedFriendIds, currentUser.id];
-    
     try {
         const res = await fetch(`${API_BASE_URL}/api/groups/add`, {
             method: 'POST',
@@ -126,7 +133,6 @@ const Groups = () => {
 
   return (
     <div className="container" style={{paddingBottom:'100px', background:'#0f172a', minHeight:'100vh', color:'white'}}>
-      {/* Header Tabs */}
       <div style={{padding:'20px 0'}}>
         <h2 style={{fontSize:'24px', fontWeight:'800', marginBottom:'20px'}}>Community</h2>
         <div style={{display:'flex', background:'#1e293b', padding:'5px', borderRadius:'14px', border:'1px solid #334155'}}>
@@ -137,20 +143,35 @@ const Groups = () => {
 
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-            {/* GROUPS TAB */}
             {activeTab === 'GROUPS' && (
                 <>
                 {groups.length > 0 ? (
                     groups.map(group => (
-                        <div key={group.id} style={{padding:'20px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                                <div style={{width:'50px', height:'50px', background:'rgba(16, 185, 129, 0.1)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center'}}><Users size={24} color="#10b981"/></div>
-                                <div>
-                                    <h4 style={{margin:0, fontSize:'17px'}}>{group.name}</h4>
-                                    <span style={{fontSize:'12px', color:'#94a3b8'}}>{group.members?.length || 0} members</span>
+                        <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
+                                <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                                    <div style={{width:'50px', height:'50px', background:'rgba(16, 185, 129, 0.1)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center'}}><Users size={24} color="#10b981"/></div>
+                                    <div>
+                                        <h4 style={{margin:0, fontSize:'17px'}}>{group.name}</h4>
+                                        <span style={{fontSize:'12px', color:'#94a3b8'}}>{group.members?.length || 0} members</span>
+                                    </div>
                                 </div>
+                                {group.adminId === currentUser?.id && <Trash2 size={18} color="#f43f5e" onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer'}}/>}
                             </div>
-                            {group.adminId === currentUser?.id && <Trash2 size={18} color="#f43f5e" onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer'}}/>}
+                            
+                            {/* 🔥 Group Members PFP stack */}
+                            <div style={{display:'flex', alignItems:'center', marginLeft:'5px'}}>
+                                {group.members?.slice(0, 5).map((member, index) => (
+                                    <div key={member.id} style={{ marginLeft: index === 0 ? 0 : '-10px', border: '2px solid #1e293b', borderRadius: '50%' }}>
+                                        {renderAvatar(member, '30px')}
+                                    </div>
+                                ))}
+                                {group.members?.length > 5 && (
+                                    <div style={{ marginLeft: '-10px', width: '30px', height: '30px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: '2px solid #1e293b', color:'#94a3b8' }}>
+                                        +{group.members.length - 5}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ))
                 ) : (
@@ -159,19 +180,18 @@ const Groups = () => {
                 </>
             )}
 
-            {/* FRIENDS TAB */}
             {activeTab === 'FRIENDS' && (
                 <>
                     {incomingRequests.length > 0 && (
                         <div style={{marginBottom:'20px'}}>
                             <h4 style={{color:'#f43f5e', fontSize:'12px', marginBottom:'10px', letterSpacing:'1px', fontWeight:'bold'}}>PENDING REQUESTS</h4>
                             {incomingRequests.map(req => (
-                                <div key={req.id} style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(244, 63, 94, 0.3)', background:'rgba(244, 63, 94, 0.1)', borderRadius:'16px', marginBottom:'10px'}}>
+                                <div key={req.id} className="card" style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(244, 63, 94, 0.3)', background:'rgba(244, 63, 94, 0.1)', borderRadius:'16px', marginBottom:'10px'}}>
                                      <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                        <BellRing size={18} color="#f43f5e"/>
+                                        {renderAvatar(req.user, '35px')}
                                         <span style={{fontSize:'14px'}}>{req.user.name}</span>
                                      </div>
-                                     <button style={{background:'#10b981', color:'white', border:'none', padding:'5px 10px', borderRadius:'8px', fontSize:'12px'}}>Accept</button>
+                                     <button style={{background:'#10b981', color:'white', border:'none', padding:'5px 10px', borderRadius:'8px', fontSize:'12px', fontWeight:'bold'}}>Accept</button>
                                 </div>
                             ))}
                         </div>
@@ -181,9 +201,8 @@ const Groups = () => {
                         friends.map(friend => (
                             <div key={friend.id} style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155', marginBottom:'10px'}}>
                                 <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                                    <div style={{width:'40px', height:'40px', background:'#334155', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:'bold'}}>
-                                        {friend.name?.charAt(0).toUpperCase()}
-                                    </div>
+                                    {/* 🔥 Real Friend PFP render */}
+                                    {renderAvatar(friend, '45px')}
                                     <div>
                                         <h4 style={{margin:0, fontSize:'15px'}}>{friend.name}</h4>
                                         <span style={{fontSize:'12px', color:'#94a3b8'}}>{friend.email}</span>
@@ -227,7 +246,9 @@ const Groups = () => {
                     <X onClick={() => setViewFriend(null)} style={{cursor:'pointer', color:'white'}}/>
                 </div>
                 <div style={{padding:'30px 20px', textAlign:'center'}}>
-                    <div style={{width:'80px', height:'80px', borderRadius:'50%', background:'#10b981', margin:'0 auto 15px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'30px', fontWeight:'bold'}}>{viewFriend.name.charAt(0)}</div>
+                    <div style={{margin:'0 auto 15px'}}>
+                        {renderAvatar(viewFriend, '80px')}
+                    </div>
                     <h2 style={{margin:0, color:'white'}}>{viewFriend.name}</h2>
                     <p style={{color:'#94a3b8', marginBottom:'25px'}}>{viewFriend.email}</p>
                     <div style={{display:'flex', gap:'10px'}}>
@@ -255,13 +276,16 @@ const Groups = () => {
                     <h3 style={{margin:0, color:'white'}}>Create New Group</h3>
                     <X onClick={() => setShowGroupModal(false)} style={{cursor:'pointer', color:'white'}}/>
                 </div>
-                <input placeholder="Group Name" value={groupName} onChange={e => setGroupName(e.target.value)} style={{width:'100%', padding:'15px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', marginBottom:'20px', outline:'none'}} />
+                <input placeholder="Group Name" value={groupName} onChange={e => setGroupName(e.target.value)} style={{width:'100%', padding:'14px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', marginBottom:'20px', outline:'none'}} />
                 <p style={{fontSize:'12px', color:'#94a3b8', marginBottom:'10px'}}>SELECT MEMBERS</p>
                 <div style={{maxHeight:'200px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'10px', marginBottom:'20px'}}>
                     {friends.map(f => (
                         <div key={f.id} onClick={() => setSelectedFriendIds(prev => prev.includes(f.id) ? prev.filter(id => id !== f.id) : [...prev, f.id])} style={{padding:'12px', borderRadius:'12px', background: selectedFriendIds.includes(f.id) ? 'rgba(16, 185, 129, 0.1)' : '#0f172a', border: selectedFriendIds.includes(f.id) ? '1px solid #10b981' : '1px solid #334155', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer'}}>
                             {selectedFriendIds.includes(f.id) ? <CheckCircle size={18} color="#10b981"/> : <div style={{width:18, height:18, borderRadius:'50%', border:'1px solid #475569'}}/>}
-                            <span style={{color: 'white'}}>{f.name}</span>
+                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                {renderAvatar(f, '24px')}
+                                <span style={{color: 'white'}}>{f.name}</span>
+                            </div>
                         </div>
                     ))}
                 </div>
