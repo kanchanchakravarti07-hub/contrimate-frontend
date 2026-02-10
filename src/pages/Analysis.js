@@ -33,6 +33,15 @@ const Analysis = () => {
       .finally(() => setLoading(false));
   };
 
+  // 🔥 FIX: Date Parser
+  const parseDate = (dateInput) => {
+      if (!dateInput) return new Date(); 
+      if (Array.isArray(dateInput)) {
+          return new Date(dateInput[0], dateInput[1] - 1, dateInput[2], dateInput[3]||0, dateInput[4]||0);
+      }
+      return new Date(dateInput);
+  };
+
   const applyFilter = (data, filterType) => {
     setTimeFilter(filterType);
     const now = new Date();
@@ -42,12 +51,10 @@ const Analysis = () => {
     if (filterType === 'MONTH') cutoff.setMonth(now.getMonth() - 1);
     if (filterType === 'YEAR') cutoff.setFullYear(now.getFullYear() - 1);
 
-    const recentData = data.filter(item => {
-        const dateVal = Array.isArray(item.createdAt) 
-            ? new Date(item.createdAt[0], item.createdAt[1]-1, item.createdAt[2])
-            : new Date(item.createdAt);
-        return dateVal >= cutoff;
-    });
+    // 🔥 Filter & Sort (Latest First)
+    const recentData = data
+        .filter(item => parseDate(item.createdAt) >= cutoff)
+        .sort((a, b) => parseDate(b.createdAt) - parseDate(a.createdAt));
 
     const realExpenses = recentData.filter(item => !item.description.toLowerCase().includes('settle'));
     const settlementData = recentData.filter(item => item.description.toLowerCase().includes('settle'));
@@ -80,6 +87,14 @@ const Analysis = () => {
 
     setFilteredData(formattedData);
   };
+
+  // 🔥 Helper for Date Display
+  const formatDisplayDate = (dateArr) => {
+      try {
+          const date = parseDate(dateArr);
+          return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      } catch(e) { return 'Recent'; }
+  }
 
   return (
     <div className="container" style={{ paddingBottom: '100px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
@@ -188,7 +203,7 @@ const Analysis = () => {
                                     <div>
                                         <h4 style={{margin:0, fontSize:'15px', color:'white', fontWeight:'700'}}>{settle.description}</h4>
                                         <span style={{fontSize:'12px', color:'#64748b', fontWeight:'500'}}>
-                                            {Array.isArray(settle.createdAt) ? `${settle.createdAt[2]} ${new Date(0, settle.createdAt[1]-1).toLocaleString('default', { month: 'short' })}` : 'Recent'}
+                                            {formatDisplayDate(settle.createdAt)}
                                         </span>
                                     </div>
                                 </div>

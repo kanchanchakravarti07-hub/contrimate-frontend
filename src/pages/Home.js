@@ -17,7 +17,7 @@ const Home = () => {
   const [youAreOwed, setYouAreOwed] = useState(0);
 
   const [notifCount, setNotifCount] = useState(0);
-  const prevCountRef = useRef(0); // Sound bajane ke liye track rakhenge
+  const prevCountRef = useRef(0); 
 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
@@ -33,21 +33,17 @@ const Home = () => {
       setCurrentUser(user);
       fetchData(user.id);
 
-      // 🔥 Har 5 second mein check karo ki naya msg aaya kya
       const interval = setInterval(() => fetchNotifications(user.id), 5000);
       return () => clearInterval(interval);
     }
   }, []);
 
-  // 🔥 Notification Fetch & Sound Logic
   const fetchNotifications = async (userId) => {
       try {
           const res = await fetch(`${API_BASE_URL}/api/notifications/unread-count/${userId}`);
           if (res.ok) {
               const count = await res.json();
               setNotifCount(count);
-
-              // 🎵 Agar count badha hai, to sound bajao
               if (count > prevCountRef.current) {
                   const audio = new Audio('/notification.mp3');
                   audio.play().catch(e => console.log("Audio permission needed"));
@@ -64,15 +60,14 @@ const Home = () => {
         fetch(`${API_BASE_URL}/api/expenses/user/${userId}`).then(res => res.ok ? res.json() : [])
       ]);
       
-      // Initial notification check
       fetchNotifications(userId);
 
       const safeExpenses = Array.isArray(expensesRes) ? expensesRes : [];
       const uniqueData = Array.from(new Map(safeExpenses.map(item => [item.id, item])).values());
+      
+      // 🔥 FIX: Improved Sorting Logic (Latest First)
       const sortedData = uniqueData.sort((a, b) => {
-          const dateA = parseDate(a.createdAt).getTime();
-          const dateB = parseDate(b.createdAt).getTime();
-          return dateB - dateA; 
+          return parseDate(b.createdAt) - parseDate(a.createdAt); 
       });
       
       setExpenses(sortedData);
@@ -85,10 +80,10 @@ const Home = () => {
     }
   };
 
-  // 🔥 FIX: Net Balance Logic (Settlement ab sahi kaam karega)
+  // 🔥 LOGIC KEPT SAME (No Changes here)
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
-      let balanceMap = {}; // Har dost ka hisab alag rakhenge (+ matalab lena hai, - matlab dena hai)
+      let balanceMap = {}; 
 
       if (!Array.isArray(data)) return;
 
@@ -104,10 +99,6 @@ const Home = () => {
                   const splitUserId = typeof split.user === 'object' ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
-                  // Logic:
-                  // Agar Maine Pay kiya (Expense ya Settlement) -> Dost ka balance badhao (+)
-                  // Agar Dost ne Pay kiya (Mera kharcha ya Settlement) -> Dost ka balance ghatao (-)
-                  
                   if (payerId === myId && splitUserId !== myId) {
                       balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
                   } 
@@ -121,13 +112,9 @@ const Home = () => {
       let finalOwe = 0;
       let finalGet = 0;
 
-      // Ab Net Balance nikalenge har dost ka
       Object.values(balanceMap).forEach(bal => {
-          if (bal > 0) {
-              finalGet += bal; // Positive hai to Lena hai
-          } else {
-              finalOwe += Math.abs(bal); // Negative hai to Dena hai
-          }
+          if (bal > 0) finalGet += bal;
+          else finalOwe += Math.abs(bal);
       });
 
       setYouOwe(finalOwe);
@@ -135,20 +122,36 @@ const Home = () => {
       setTotalBalance(finalGet - finalOwe);
   };
 
+  // 🔥 FIX: Robust Date Parser
   const parseDate = (dateInput) => {
       if (!dateInput) return new Date(); 
       if (Array.isArray(dateInput)) {
-          const [year, month, day, hour, minute, second] = dateInput;
-          return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+          // [Year, Month, Day, Hour, Min, Sec]
+          return new Date(
+              dateInput[0], 
+              dateInput[1] - 1, // Month is 0-indexed in JS
+              dateInput[2], 
+              dateInput[3] || 0, 
+              dateInput[4] || 0, 
+              dateInput[5] || 0
+          );
       }
       return new Date(dateInput);
   };
 
+  // 🔥 FIX: Better Time Display
   const formatDate = (dateInput) => {
       try {
         const date = parseDate(dateInput);
         if (isNaN(date.getTime())) return 'Just now';
-        return `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        
+        return date.toLocaleDateString('en-GB', {
+            day: 'numeric', 
+            month: 'short', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true
+        });
       } catch (e) { return 'Date Error'; }
   };
 
@@ -175,10 +178,7 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`)
-      .then(res => res.ok ? res.json() : [])
-      .then(setComments)
-      .catch(() => setComments([]));
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.ok ? res.json() : []).then(setComments).catch(() => {});
   };
 
   const handleSendComment = async () => {
@@ -221,8 +221,6 @@ const Home = () => {
           <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '4px 0 0 0', color: 'white' }}>{currentUser?.name?.split(' ')[0]} 👋</h2>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>
-             
-             {/* 🔥 NOTIFICATION BADGE UI */}
              <div onClick={() => navigate('/notifications')} style={{ position: 'relative', cursor: 'pointer', background:'#1e293b', padding:'10px', borderRadius:'50%' }}>
                 <Bell size={20} color="white" />
                 {notifCount > 0 && (
@@ -239,7 +237,6 @@ const Home = () => {
                     </span>
                 )}
              </div>
-
              <div onClick={handleLogout} style={{ cursor:'pointer', background:'#1e293b', padding:'10px', borderRadius:'50%' }}><LogOut size={20} color="#f43f5e" /></div>
         </div>
       </div>
@@ -302,7 +299,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* FAB & Bottom Nav */}
+      {/* Footer Nav */}
       <div style={{ position: 'fixed', bottom: '90px', right: '20px', zIndex: 10 }}>
         <button onClick={() => navigate('/add-expense')} style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#10b981', border: 'none', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize:'30px' }}><Plus size={28} strokeWidth={3} /></button>
       </div>
