@@ -28,11 +28,9 @@ const AddExpense = () => {
     if (loggedInUser) {
         setPayerId(loggedInUser.id);
         
-        // Crash Proof Fetching
         fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${loggedInUser.id}`)
           .then(res => res.ok ? res.json() : [])
           .then(data => {
-              // Ensure data is always an array
               setGroups(Array.isArray(data) ? data : []);
           })
           .catch(err => {
@@ -74,7 +72,9 @@ const AddExpense = () => {
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
     if (group.memberIds && allUsers.length > 0) {
-        const groupMembers = allUsers.filter(user => group.memberIds.includes(user.id));
+        const groupMembers = allUsers.filter(user => 
+            group.memberIds.map(String).includes(String(user.id))
+        );
         initializeUsers(groupMembers);
     } else {
         setUsers([]);
@@ -191,7 +191,6 @@ const AddExpense = () => {
                   <h3 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Select Group</h3>
                 </div>
                 <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* SAFE MAP: Check if groups is array */}
                   {Array.isArray(groups) && groups.map(g => (
                     <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '18px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
