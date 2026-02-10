@@ -85,10 +85,10 @@ const Home = () => {
     }
   };
 
+  // 🔥 FIX: Net Balance Logic (Settlement ab sahi kaam karega)
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
-      let totalOwe = 0;
-      let totalGet = 0;
+      let balanceMap = {}; // Har dost ka hisab alag rakhenge (+ matalab lena hai, - matlab dena hai)
 
       if (!Array.isArray(data)) return;
 
@@ -104,19 +104,35 @@ const Home = () => {
                   const splitUserId = typeof split.user === 'object' ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
+                  // Logic:
+                  // Agar Maine Pay kiya (Expense ya Settlement) -> Dost ka balance badhao (+)
+                  // Agar Dost ne Pay kiya (Mera kharcha ya Settlement) -> Dost ka balance ghatao (-)
+                  
                   if (payerId === myId && splitUserId !== myId) {
-                      totalGet += amount;
+                      balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
                   } 
                   else if (splitUserId === myId && payerId !== myId) {
-                      totalOwe += amount;
+                      balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
                   }
               });
           }
       });
 
-      setYouOwe(totalOwe);
-      setYouAreOwed(totalGet);
-      setTotalBalance(totalGet - totalOwe);
+      let finalOwe = 0;
+      let finalGet = 0;
+
+      // Ab Net Balance nikalenge har dost ka
+      Object.values(balanceMap).forEach(bal => {
+          if (bal > 0) {
+              finalGet += bal; // Positive hai to Lena hai
+          } else {
+              finalOwe += Math.abs(bal); // Negative hai to Dena hai
+          }
+      });
+
+      setYouOwe(finalOwe);
+      setYouAreOwed(finalGet);
+      setTotalBalance(finalGet - finalOwe);
   };
 
   const parseDate = (dateInput) => {
@@ -159,7 +175,10 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.ok ? res.json() : []).then(setComments).catch(() => {});
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(setComments)
+      .catch(() => setComments([]));
   };
 
   const handleSendComment = async () => {
