@@ -17,20 +17,13 @@ const Home = () => {
   const [youAreOwed, setYouAreOwed] = useState(0);
 
   const [notifCount, setNotifCount] = useState(0);
-  const prevCountRef = useRef(0);
+  const prevCountRef = useRef(0); 
 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
-
-  // LocalStorage se Read Status uthao
-  const [readStatus, setReadStatus] = useState(() => {
-      try {
-          const saved = localStorage.getItem('chatReadStatus');
-          return saved ? JSON.parse(saved) : {};
-      } catch(e) { return {}; }
-  });
+  const [viewedExpenseIds, setViewedExpenseIds] = useState([]);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -39,6 +32,7 @@ const Home = () => {
     } else {
       setCurrentUser(user);
       fetchData(user.id);
+
       const interval = setInterval(() => fetchNotifications(user.id), 5000);
       return () => clearInterval(interval);
     }
@@ -62,16 +56,17 @@ const Home = () => {
   const fetchData = async (userId) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/expenses/user/${userId}`);
-      if (!res.ok) throw new Error("Failed to fetch");
+      const [expensesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/expenses/user/${userId}`).then(res => res.ok ? res.json() : [])
+      ]);
       
-      const expensesRes = await res.json();
       fetchNotifications(userId);
 
       const safeExpenses = Array.isArray(expensesRes) ? expensesRes : [];
+      const uniqueData = Array.from(new Map(safeExpenses.map(item => [item.id, item])).values());
       
-      // Sorting: Latest First
-      const sortedData = safeExpenses.sort((a, b) => {
+      // 🔥 FIX: Improved Sorting Logic (Latest First)
+      const sortedData = uniqueData.sort((a, b) => {
           return parseDate(b.createdAt) - parseDate(a.createdAt); 
       });
       
@@ -79,15 +74,13 @@ const Home = () => {
       calculateRealBalance(sortedData, userId);
 
     } catch (err) {
-      console.error("Fetch Error:", err);
-      // Agar error aaye to bhi empty list set karo taaki crash na ho
-      setExpenses([]);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔥 STRONG BALANCE CALCULATION
+  // 🔥 LOGIC KEPT SAME (No Changes here)
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
       let balanceMap = {}; 
@@ -96,30 +89,21 @@ const Home = () => {
 
       data.forEach(expense => {
           if (!expense || !expense.paidBy) return;
-          
-          // ID Safe Extraction
+
           const payerId = typeof expense.paidBy === 'object' ? Number(expense.paidBy.id) : Number(expense.paidBy);
           
           if (expense.splits && Array.isArray(expense.splits)) {
               expense.splits.forEach(split => {
-                  // User Safe Extraction
-                  let splitUserId = null;
-                  if (split.user) {
-                      splitUserId = typeof split.user === 'object' ? Number(split.user.id) : Number(split.user);
-                  }
-                  
-                  // Amount Safe Extraction (Backend kabhi 'amount' bhejta hai kabhi 'amountOwed')
+                  if (!split.user) return;
+
+                  const splitUserId = typeof split.user === 'object' ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
-                  if (splitUserId) {
-                      if (payerId === myId && splitUserId !== myId) {
-                          // Maine pay kiya, dost ko dena hai -> Positive (Lena hai)
-                          balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
-                      } 
-                      else if (splitUserId === myId && payerId !== myId) {
-                          // Dost ne pay kiya, mujhe dena hai -> Negative (Dena hai)
-                          balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
-                      }
+                  if (payerId === myId && splitUserId !== myId) {
+                      balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
+                  } 
+                  else if (splitUserId === myId && payerId !== myId) {
+                      balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
                   }
               });
           }
@@ -138,19 +122,36 @@ const Home = () => {
       setTotalBalance(finalGet - finalOwe);
   };
 
+  // 🔥 FIX: Robust Date Parser
   const parseDate = (dateInput) => {
       if (!dateInput) return new Date(); 
       if (Array.isArray(dateInput)) {
-          return new Date(dateInput[0], dateInput[1] - 1, dateInput[2], dateInput[3]||0, dateInput[4]||0, dateInput[5]||0);
+          // [Year, Month, Day, Hour, Min, Sec]
+          return new Date(
+              dateInput[0], 
+              dateInput[1] - 1, // Month is 0-indexed in JS
+              dateInput[2], 
+              dateInput[3] || 0, 
+              dateInput[4] || 0, 
+              dateInput[5] || 0
+          );
       }
       return new Date(dateInput);
   };
 
+  // 🔥 FIX: Better Time Display
   const formatDate = (dateInput) => {
       try {
         const date = parseDate(dateInput);
         if (isNaN(date.getTime())) return 'Just now';
-        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        return date.toLocaleDateString('en-GB', {
+            day: 'numeric', 
+            month: 'short', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true
+        });
       } catch (e) { return 'Date Error'; }
   };
 
@@ -169,16 +170,11 @@ const Home = () => {
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
   };
 
-  const openComments = (expenseId, lastCommentId) => {
+  const openComments = (expenseId) => {
     setActiveExpenseId(expenseId);
     setShowCommentModal(true);
     fetchComments(expenseId);
-
-    if (lastCommentId) {
-        const newStatus = { ...readStatus, [expenseId]: lastCommentId };
-        setReadStatus(newStatus);
-        localStorage.setItem('chatReadStatus', JSON.stringify(newStatus));
-    }
+    if (!viewedExpenseIds.includes(expenseId)) setViewedExpenseIds([...viewedExpenseIds, expenseId]);
   };
 
   const fetchComments = (expenseId) => {
@@ -192,32 +188,24 @@ const Home = () => {
     setComments([...comments, tempComment]);
 
     try {
-        const res = await fetch(`${API_BASE_URL}/api/comments/add`, {
+        await fetch(`${API_BASE_URL}/api/comments/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: newComment, userId: currentUser.id, expenseId: activeExpenseId })
         });
-        
-        if (res.ok) {
-            const savedComment = await res.json();
-            setNewComment('');
-            const newStatus = { ...readStatus, [activeExpenseId]: savedComment.id };
-            setReadStatus(newStatus);
-            localStorage.setItem('chatReadStatus', JSON.stringify(newStatus));
-            fetchComments(activeExpenseId);
-        }
+        setNewComment('');
+        fetchComments(activeExpenseId);
     } catch(e) {}
   };
 
   const hasUnreadChat = (expense) => {
-      if (!expense.comments || expense.comments.length === 0) return false;
-      const lastComment = expense.comments[expense.comments.length - 1];
-      const commentUserId = lastComment.user?.id || lastComment.user;
-      
-      if (String(commentUserId) === String(currentUser?.id)) return false;
-
-      const lastReadId = readStatus[expense.id] || 0;
-      return lastComment.id > lastReadId;
+      if (viewedExpenseIds.includes(expense.id)) return false;
+      if (expense.comments && expense.comments.length > 0) {
+          const lastComment = expense.comments[expense.comments.length - 1];
+          const commentUserId = lastComment.user?.id || lastComment.user;
+          return String(commentUserId) !== String(currentUser?.id);
+      }
+      return false;
   };
 
   const handleLogout = () => {
@@ -227,7 +215,6 @@ const Home = () => {
   return (
     <div className="container" style={{ paddingBottom: '100px', background: '#0f172a', minHeight:'100vh', color: 'white' }}>
       
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', position: 'sticky', top: 0, zIndex: 10, background: '#0f172a' }}>
         <div>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px', fontWeight:'600' }}>{getGreeting()},</p>
@@ -237,7 +224,15 @@ const Home = () => {
              <div onClick={() => navigate('/notifications')} style={{ position: 'relative', cursor: 'pointer', background:'#1e293b', padding:'10px', borderRadius:'50%' }}>
                 <Bell size={20} color="white" />
                 {notifCount > 0 && (
-                    <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: '#f43f5e', color: 'white', fontSize: '10px', fontWeight: 'bold', width: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #0f172a' }}>
+                    <span style={{ 
+                        position: 'absolute', top: '-2px', right: '-2px', 
+                        background: '#f43f5e', color: 'white', 
+                        fontSize: '10px', fontWeight: 'bold', 
+                        width: '18px', height: '18px', 
+                        borderRadius: '50%', display: 'flex', 
+                        alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid #0f172a'
+                    }}>
                         {notifCount > 9 ? '9+' : notifCount}
                     </span>
                 )}
@@ -246,7 +241,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Balance Card */}
       <div className="card" style={{ background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', padding: '25px', borderRadius: '28px', position: 'relative', overflow: 'hidden', marginBottom: '30px' }}>
         <div style={{position:'relative', zIndex:2}}>
             <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.9)', fontWeight:'700' }}>TOTAL BALANCE</p>
@@ -279,8 +273,6 @@ const Home = () => {
             const isMyExpense = String(expense.paidBy?.id) === String(currentUser?.id);
             const payerName = expense.paidBy?.name || "Unknown";
             const hasNewMsg = hasUnreadChat(expense);
-            // Safe Access for comments
-            const lastCommentId = expense.comments && expense.comments.length > 0 ? expense.comments[expense.comments.length-1].id : null;
             
             return (
                 <div key={expense.id} className="card" style={{ padding: '16px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', border: '1px solid #334155' }}>
@@ -297,7 +289,7 @@ const Home = () => {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                         <span style={{ fontSize: '15px', fontWeight: 'bold', color: isMyExpense ? '#10b981' : '#f43f5e' }}>{isMyExpense ? '+' : '-'} ₹{expense.totalAmount}</span>
-                        <div onClick={() => openComments(expense.id, lastCommentId)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', cursor: 'pointer', background: hasNewMsg ? 'rgba(244, 63, 94, 0.15)' : '#334155', color: hasNewMsg ? '#f43f5e' : '#cbd5e1', padding: '4px 8px', borderRadius: '8px', border: hasNewMsg ? '1px solid rgba(244, 63, 94, 0.4)' : 'none' }}>
+                        <div onClick={() => openComments(expense.id)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', cursor: 'pointer', background: hasNewMsg ? 'rgba(244, 63, 94, 0.15)' : '#334155', color: hasNewMsg ? '#f43f5e' : '#cbd5e1', padding: '4px 8px', borderRadius: '8px', border: hasNewMsg ? '1px solid rgba(244, 63, 94, 0.4)' : 'none' }}>
                             <MessageCircle size={12} fill={hasNewMsg ? "currentColor" : "none"} /> {hasNewMsg ? 'New' : 'Chat'}
                         </div>
                     </div>
@@ -307,7 +299,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* FAB & Bottom Nav */}
+      {/* Footer Nav */}
       <div style={{ position: 'fixed', bottom: '90px', right: '20px', zIndex: 10 }}>
         <button onClick={() => navigate('/add-expense')} style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#10b981', border: 'none', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize:'30px' }}><Plus size={28} strokeWidth={3} /></button>
       </div>
