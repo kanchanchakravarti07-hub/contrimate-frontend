@@ -33,34 +33,33 @@ const Home = () => {
     }
   }, []);
 
-  const fetchData = (userId) => {
+  const fetchData = async (userId) => {
     setLoading(true);
-    
-    fetch(`${API_BASE_URL}/api/expenses/user/${userId}`)
-      .then(res => res.ok ? res.json() : [])
-      .then(data => {
-        const safeData = Array.isArray(data) ? data : [];
-        
-        const uniqueData = Array.from(new Map(safeData.map(item => [item.id, item])).values());
-        const sortedData = uniqueData.sort((a, b) => {
-            const dateA = parseDate(a.createdAt).getTime();
-            const dateB = parseDate(b.createdAt).getTime();
-            return dateB - dateA; 
-        });
-        
-        setExpenses(sortedData);
-        calculateRealBalance(sortedData, userId);
-        setLoading(false);
-      })
-      .catch(err => {
-          console.error(err);
-          setLoading(false);
-      });
+    try {
+      const [expensesRes, notifRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/expenses/user/${userId}`).then(res => res.ok ? res.json() : []),
+        fetch(`${API_BASE_URL}/api/notifications/${userId}`).then(res => res.ok ? res.json() : [])
+      ]);
 
-    fetch(`${API_BASE_URL}/api/notifications/${userId}`)
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setNotifCount(Array.isArray(data) ? data.length : 0))
-        .catch(() => setNotifCount(0));
+      const safeExpenses = Array.isArray(expensesRes) ? expensesRes : [];
+      const uniqueData = Array.from(new Map(safeExpenses.map(item => [item.id, item])).values());
+      const sortedData = uniqueData.sort((a, b) => {
+          const dateA = parseDate(a.createdAt).getTime();
+          const dateB = parseDate(b.createdAt).getTime();
+          return dateB - dateA; 
+      });
+      
+      setExpenses(sortedData);
+      calculateRealBalance(sortedData, userId);
+
+      const safeNotifs = Array.isArray(notifRes) ? notifRes : [];
+      setNotifCount(safeNotifs.filter(n => !n.isRead).length);
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const calculateRealBalance = (data, userId) => {
@@ -137,11 +136,18 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.json()).then(setComments).catch(() => {});
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(setComments)
+      .catch(() => setComments([]));
   };
 
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
+    
+    const tempComment = { text: newComment, user: { id: currentUser.id }, createdAt: new Date() };
+    setComments([...comments, tempComment]);
+
     try {
         await fetch(`${API_BASE_URL}/api/comments/add`, {
             method: 'POST',
@@ -156,7 +162,9 @@ const Home = () => {
   const hasUnreadChat = (expense) => {
       if (viewedExpenseIds.includes(expense.id)) return false;
       if (expense.comments && expense.comments.length > 0) {
-          return expense.comments[expense.comments.length - 1].user?.id !== currentUser?.id;
+          const lastComment = expense.comments[expense.comments.length - 1];
+          const commentUserId = lastComment.user?.id || lastComment.user;
+          return String(commentUserId) !== String(currentUser?.id);
       }
       return false;
   };
@@ -211,7 +219,7 @@ const Home = () => {
       {loading ? <p style={{ textAlign: 'center', color: '#64748b' }}>Loading...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {expenses.length > 0 ? expenses.slice(0, 10).map((expense) => {
-            const isMyExpense = expense.paidBy?.id === currentUser?.id;
+            const isMyExpense = String(expense.paidBy?.id) === String(currentUser?.id);
             const payerName = expense.paidBy?.name || "Unknown";
             const hasNewMsg = hasUnreadChat(expense);
             
@@ -256,7 +264,14 @@ const Home = () => {
              <div onClick={(e) => e.stopPropagation()} style={{ background: '#1e293b', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px' }}>
                 <p style={{color:'white', marginBottom:'10px', fontWeight:'bold'}}>Discussion</p>
                 <div style={{ maxHeight:'200px', overflowY:'auto', marginBottom:'15px', display:'flex', flexDirection:'column', gap:'8px' }}>
-                    {comments.map((c, i) => <div key={i} style={{background: c.user?.id === currentUser?.id ? '#10b981' : '#334155', alignSelf: c.user?.id === currentUser?.id ? 'flex-end' : 'flex-start', padding:'8px 12px', borderRadius:'12px', color:'white', fontSize:'13px'}}>{c.text}</div>)}
+                    {comments.map((c, i) => {
+                        const isMe = String(c.user?.id || c.user) === String(currentUser?.id);
+                        return (
+                            <div key={i} style={{background: isMe ? '#10b981' : '#334155', alignSelf: isMe ? 'flex-end' : 'flex-start', padding:'8px 12px', borderRadius:'12px', color:'white', fontSize:'13px'}}>
+                                {c.text}
+                            </div>
+                        );
+                    })}
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <input type="text" placeholder="Type..." value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendComment()} style={{ flex: 1, background: '#0f172a', border: '1px solid #334155', borderRadius: '12px', padding: '12px', color: 'white', outline:'none' }} />
