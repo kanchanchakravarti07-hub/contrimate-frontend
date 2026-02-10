@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, UserPlus, Trash2, ShieldCheck, X, CheckCircle, AtSign, Mail, User, Shield, Loader, BellRing, Clock, Eye, Wallet, ChevronRight, Search } from 'lucide-react';
+import { Plus, Users, UserPlus, Trash2, X, CheckCircle, Wallet, Clock, Loader, Eye } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Groups = () => {
@@ -85,7 +85,6 @@ const Groups = () => {
     }
   }, [viewFriend]);
 
-  // 🔥 ACCEPT REQUEST LOGIC
   const handleAcceptRequest = async (requestId) => {
     try {
         const res = await fetch(`${API_BASE_URL}/api/users/accept-friend`, {
@@ -188,7 +187,7 @@ const Groups = () => {
 
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-            {/* GROUPS TAB */}
+            
             {activeTab === 'GROUPS' && groups.map(group => (
                  <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
@@ -217,11 +216,9 @@ const Groups = () => {
              </div>
             ))}
 
-            {/* FRIENDS TAB */}
             {activeTab === 'FRIENDS' && (
                 <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
                     
-                    {/* INCOMING REQUESTS */}
                     {incomingRequests.length > 0 && (
                         <div>
                             <h4 style={{fontSize:'12px', color:'#f43f5e', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>PENDING FOR YOU</h4>
@@ -245,7 +242,6 @@ const Groups = () => {
                         </div>
                     )}
 
-                    {/* SENT REQUESTS */}
                     {sentRequests.length > 0 && (
                         <div>
                             <h4 style={{fontSize:'12px', color:'#3b82f6', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>SENT REQUESTS</h4>
@@ -263,7 +259,6 @@ const Groups = () => {
                         </div>
                     )}
 
-                    {/* ACTUAL FRIENDS */}
                     <div>
                         <h4 style={{fontSize:'12px', color:'#64748b', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>MY FRIENDS</h4>
                         {friends.length > 0 ? friends.map(friend => (
@@ -292,14 +287,12 @@ const Groups = () => {
         </div>
       )}
 
-      {/* FAB */}
       <div style={{position:'fixed', bottom:'90px', right:'20px', zIndex:50}}>
         <button onClick={() => activeTab === 'GROUPS' ? setShowGroupModal(true) : setShowFriendModal(true)} style={{width:'60px', height:'60px', borderRadius:'20px', background:'#10b981', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'white', boxShadow:'0 10px 25px rgba(16, 185, 129, 0.4)'}}>
             {activeTab === 'GROUPS' ? <Plus size={30} /> : <UserPlus size={26} />}
         </button>
       </div>
 
-      {/* ADD FRIEND MODAL */}
       {showFriendModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
@@ -329,7 +322,6 @@ const Groups = () => {
         </div>
       )}
 
-      {/* PROFILE MODAL */}
       {viewFriend && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'350px', background:'#1e293b', borderRadius:'24px', border:'1px solid #334155', overflow:'hidden'}}>

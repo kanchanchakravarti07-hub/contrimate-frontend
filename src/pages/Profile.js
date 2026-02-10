@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  User, Mail, Phone, LogOut, ChevronRight, Shield, Bell, HelpCircle, 
+  User, Bell, LogOut, ChevronRight, Shield, HelpCircle, 
   Edit2, Camera, Wallet, Users, Loader 
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
@@ -59,7 +59,6 @@ const Profile = () => {
     }
   };
 
-  // 🔥 UPDATED: Now supports Name + Photo
   const handleUpdateProfile = async (photoBase64 = null) => {
       if (!newName.trim() && !photoBase64) return;
       
@@ -71,7 +70,7 @@ const Profile = () => {
               body: JSON.stringify({ 
                   id: user.id, 
                   name: newName.trim(),
-                  profilePic: photoBase64 || user.profilePic // Photo logic added
+                  profilePic: photoBase64 || user.profilePic 
               })
           });
 
@@ -92,13 +91,12 @@ const Profile = () => {
       }
   };
 
-  // 🔥 NEW: Handle Photo Selection
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
         const reader = new FileReader();
         reader.onloadend = () => {
-            handleUpdateProfile(reader.result); // Send Base64 to update
+            handleUpdateProfile(reader.result); 
         };
         reader.readAsDataURL(file);
     }
@@ -127,7 +125,6 @@ const Profile = () => {
           display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px'
       }}>
         <div style={{ position: 'relative', marginBottom: '15px' }}>
-            {/* 🔥 UPDATED: Shows Profile Pic if exists */}
             <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold', color: 'white', border: '4px solid #0f172a', overflow: 'hidden' }}>
                 {user?.profilePic ? (
                     <img src={user.profilePic} alt="Profile" style={{width:'100%', height:'100%', objectFit:'cover'}} />
@@ -135,7 +132,6 @@ const Profile = () => {
                     user?.name?.charAt(0).toUpperCase()
                 )}
             </div>
-            {/* 🔥 UPDATED: Hidden file input on Camera click */}
             <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#3b82f6', padding: '6px', borderRadius: '50%', border: '2px solid #0f172a', cursor:'pointer' }}>
                 <Camera size={14} color="white" />
                 <input type="file" accept="image/*" onChange={handlePhotoChange} style={{display:'none'}} />

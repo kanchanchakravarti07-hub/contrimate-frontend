@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Receipt, MessageCircle, Utensils, Car, ShoppingBag, Zap, Coffee, Gift 
+  ArrowLeft, Receipt, Utensils, Car, ShoppingBag, Zap, Coffee, Gift 
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -25,7 +25,6 @@ const History = () => {
     fetch(`${API_BASE_URL}/api/expenses/user/${userId}`)
       .then(res => res.json())
       .then(data => {
-        // 🔥 FIX 1: Robust Sorting (Newest First)
         const sorted = Array.isArray(data) ? data.sort((a, b) => {
           const dateA = parseDate(a.createdAt);
           const dateB = parseDate(b.createdAt);
@@ -37,7 +36,6 @@ const History = () => {
       .catch(err => setLoading(false));
   };
 
-  // 🔥 FIX 2: Universal Date Parser
   const parseDate = (dateInput) => {
     if (!dateInput) return new Date(0);
 
@@ -49,7 +47,6 @@ const History = () => {
     return new Date(dateInput);
   };
 
-  // 🔥 FIX 3: Nice Date Format
   const formatDate = (dateInput) => {
     const date = parseDate(dateInput);
 
@@ -67,7 +64,6 @@ const History = () => {
     return `${day} ${month}, ${hour}:${minute} ${ampm}`;
   };
 
-  // 🔥 FIX 4: Smart Category Icons
   const getCategoryIcon = (desc) => {
     const d = desc ? desc.toLowerCase() : "";
     if (d.includes('food') || d.includes('pizza') || d.includes('burger')) return <Utensils size={20} color="#f59e0b" />;

@@ -12,7 +12,6 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   
-  // Balance States
   const [totalBalance, setTotalBalance] = useState(0);
   const [youOwe, setYouOwe] = useState(0);
   const [youAreOwed, setYouAreOwed] = useState(0);
@@ -37,20 +36,15 @@ const Home = () => {
   const fetchData = (userId) => {
     setLoading(true);
     
-    // 1. Fetch Expenses
     fetch(`${API_BASE_URL}/api/expenses/user/${userId}`)
       .then(res => res.json())
       .then(data => {
-        console.log("🔥 API Data Received:", data); // Check Console to see if data is coming
-
         if (!Array.isArray(data)) {
-            console.error("Data is not an array:", data);
             setExpenses([]);
             setLoading(false);
             return;
         }
 
-        // Remove Duplicates & Sort
         const uniqueData = Array.from(new Map(data.map(item => [item.id, item])).values());
         const sortedData = uniqueData.sort((a, b) => {
             const dateA = parseDate(a.createdAt).getTime();
@@ -63,18 +57,15 @@ const Home = () => {
         setLoading(false);
       })
       .catch(err => {
-          console.error("Fetch Error:", err);
           setLoading(false);
       });
 
-    // 2. Fetch Notifications
     fetch(`${API_BASE_URL}/api/notifications/${userId}`)
         .then(res => res.json())
         .then(data => setNotifCount(Array.isArray(data) ? data.length : 0))
         .catch(() => setNotifCount(0));
   };
 
-  // 🔥 CORE LOGIC (SAFE VERSION)
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
       let balanceMap = {}; 
@@ -82,27 +73,21 @@ const Home = () => {
       if (!Array.isArray(data)) return;
 
       data.forEach(expense => {
-          // Safety Check: Agar expense ya paidBy missing hai to skip karo
           if (!expense || !expense.paidBy) return;
 
-          // PaidBy ID nikalne ka safe tareeka (Object ho ya Direct ID)
           const payerId = expense.paidBy.id ? Number(expense.paidBy.id) : Number(expense.paidBy);
           
           if (expense.splits && Array.isArray(expense.splits)) {
               expense.splits.forEach(split => {
                   if (!split.user) return;
 
-                  // User ID nikalne ka safe tareeka
                   const splitUserId = split.user.id ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
-                  // Calculation Logic
                   if (payerId === myId && splitUserId !== myId) {
-                      // Maine pay kiya, dost udhaar hai (Positive)
                       balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
                   } 
                   else if (splitUserId === myId && payerId !== myId) {
-                      // Dost ne pay kiya, main udhaar hu (Negative)
                       balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
                   }
               });
@@ -117,14 +102,11 @@ const Home = () => {
           else totalOwe += Math.abs(bal);
       });
 
-      console.log("Calculated -> Owe:", totalOwe, "Get:", totalGet);
-
       setYouOwe(totalOwe);
       setYouAreOwed(totalGet);
       setTotalBalance(totalGet - totalOwe);
   };
 
-  // --- Helpers ---
   const parseDate = (dateInput) => {
       if (!dateInput) return new Date(); 
       if (Array.isArray(dateInput)) {
@@ -157,7 +139,6 @@ const Home = () => {
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
   };
 
-  // --- Comments ---
   const openComments = (expenseId) => {
     setActiveExpenseId(expenseId);
     setShowCommentModal(true);
@@ -166,7 +147,7 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.json()).then(setComments).catch(e => console.log(e));
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.json()).then(setComments).catch(() => {});
   };
 
   const handleSendComment = async () => {
@@ -179,7 +160,7 @@ const Home = () => {
         });
         setNewComment('');
         fetchComments(activeExpenseId);
-    } catch(e) { console.error("Comment Error", e); }
+    } catch(e) {}
   };
 
   const hasUnreadChat = (expense) => {
@@ -197,7 +178,6 @@ const Home = () => {
   return (
     <div className="container" style={{ paddingBottom: '100px', background: '#0f172a', minHeight:'100vh', color: 'white' }}>
       
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', position: 'sticky', top: 0, zIndex: 10, background: '#0f172a' }}>
         <div>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '12px', fontWeight:'600' }}>{getGreeting()},</p>
@@ -212,7 +192,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Balance Card */}
       <div className="card" style={{ background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', padding: '25px', borderRadius: '28px', position: 'relative', overflow: 'hidden', marginBottom: '30px' }}>
         <div style={{position:'relative', zIndex:2}}>
             <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.9)', fontWeight:'700' }}>TOTAL BALANCE</p>
@@ -234,7 +213,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Transactions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color:'white' }}>Recent Transactions</h3>
         <span onClick={() => navigate('/history')} style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', cursor: 'pointer' }}>View All</span>
@@ -243,7 +221,6 @@ const Home = () => {
       {loading ? <p style={{ textAlign: 'center', color: '#64748b' }}>Loading...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {expenses.length > 0 ? expenses.slice(0, 10).map((expense) => {
-            // SAFE CHECK: Check if paidBy exists
             const isMyExpense = expense.paidBy?.id === currentUser?.id;
             const payerName = expense.paidBy?.name || "Unknown";
             const hasNewMsg = hasUnreadChat(expense);
@@ -273,7 +250,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* FAB & Bottom Nav */}
       <div style={{ position: 'fixed', bottom: '90px', right: '20px', zIndex: 10 }}>
         <button onClick={() => navigate('/add-expense')} style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#10b981', border: 'none', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize:'30px' }}><Plus size={28} strokeWidth={3} /></button>
       </div>
@@ -285,7 +261,6 @@ const Home = () => {
         ))}
       </div>
 
-      {/* Comment Modal */}
       {showCommentModal && (
         <div onClick={() => setShowCommentModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
              <div onClick={(e) => e.stopPropagation()} style={{ background: '#1e293b', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '20px' }}>

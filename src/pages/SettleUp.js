@@ -51,24 +51,19 @@ const SettleUp = () => {
     );
   };
 
-  // 🔥 UPDATED: Real UPI Payment Logic
   const handleSettle = async (friendId, friendName, amount, friendUpi) => {
     const absAmount = Math.abs(amount).toFixed(2);
     
-    // 1. Agar UPI ID missing hai
     if (!friendUpi) {
         return alert(`Bhai, ${friendName} ki UPI ID missing hai! Real payment nahi ho sakti.`);
     }
 
-    // 2. User confirmation
     if (!window.confirm(`Redirecting to UPI apps to pay ₹${absAmount} to ${friendName}?`)) return;
 
-    // 3. UPI Deep Link (Google Pay, PhonePe, Paytm automatically handle this)
     const upiLink = `upi://pay?pa=${friendUpi}&pn=${encodeURIComponent(friendName)}&am=${absAmount}&cu=INR&tn=Settled%20via%20Contrimate`;
     
     window.location.href = upiLink;
 
-    // 4. Record the settlement in database after a small delay
     setTimeout(async () => {
       if (window.confirm("Payment complete kar di? Record update kar dein?")) {
         setLoading(true);

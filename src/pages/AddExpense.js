@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, CheckCircle, Circle, User, LayoutGrid, ChevronRight } from 'lucide-react'; // CheckCircle import kiya
+import { ArrowLeft, Users, CheckCircle, Circle, User, LayoutGrid, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const AddExpense = () => {
   const navigate = useNavigate();
 
-  // --- FLOW & DATA STATES ---
   const [flowStep, setFlowStep] = useState('CHOICE'); 
   const [users, setUsers] = useState([]); 
   const [allUsers, setAllUsers] = useState([]); 
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
 
-  // --- FORM STATES ---
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState(''); // Equal split ke liye total
+  const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food'); 
   const [payerId, setPayerId] = useState('');
   const [splitMode, setSplitMode] = useState('EQUAL'); 
   
-  // 🔥 New: Diff Split ke liye amounts
   const [manualAmounts, setManualAmounts] = useState({});
-  // 🔥 New: Equal Split ke liye selected users IDs
   const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -44,12 +40,9 @@ const AddExpense = () => {
     }
   }, []);
 
-  // --- SELECTION LOGIC ---
   const initializeUsers = (userList) => {
       setUsers(userList);
-      // By default sabko select kar lo equal split ke liye
       setSelectedUserIds(userList.map(u => u.id));
-      // Manual amounts reset kar do
       setManualAmounts({});
   };
 
@@ -76,7 +69,6 @@ const AddExpense = () => {
     setFlowStep('FORM');
   };
 
-  // 🔥 Equal Split: Toggle User Selection
   const toggleUserSelection = (userId) => {
       if (selectedUserIds.includes(userId)) {
           setSelectedUserIds(selectedUserIds.filter(id => id !== userId));
@@ -85,12 +77,10 @@ const AddExpense = () => {
       }
   };
 
-  // 🔥 Diff Split: Handle Manual Amount Change
   const handleManualChange = (userId, val) => {
     setManualAmounts({ ...manualAmounts, [userId]: val });
   };
 
-  // Calculate Total for Diff Mode automatically
   const getDiffTotal = () => {
       let total = 0;
       Object.values(manualAmounts).forEach(val => {
@@ -113,18 +103,15 @@ const AddExpense = () => {
 
       const share = parseFloat((finalTotal / selectedUserIds.length).toFixed(2));
       
-      // Sirf selected users ko split mein daalo
       splits = selectedUserIds.map(id => ({ 
           user: { id }, 
           amountOwed: share 
       }));
 
     } else {
-      // UNEQUAL MODE
       finalTotal = getDiffTotal();
       if (finalTotal <= 0) return alert("Amounts toh daalo bhai!");
 
-      // Har user ka amount check karo
       users.forEach(u => {
           const val = parseFloat(manualAmounts[u.id] || 0);
           if (val > 0) {
@@ -166,7 +153,6 @@ const AddExpense = () => {
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: '#0f172a', fontFamily: 'sans-serif' }}>
       
-      {/* 1️⃣ CHOICE & GROUP MODAL */}
       {(flowStep === 'CHOICE' || flowStep === 'GROUP_LIST') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: '20px' }}>
           <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', borderRadius: '32px', padding: '30px', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -206,7 +192,6 @@ const AddExpense = () => {
         </div>
       )}
 
-      {/* 2️⃣ MAIN FORM */}
       {flowStep === 'FORM' && (
       <div className="container" style={{ padding: '0 20px 140px 20px', color: 'white', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0' }}>
@@ -215,7 +200,6 @@ const AddExpense = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Toggle Split Mode */}
           <div style={{ display: 'flex', background: '#1e293b', padding: '4px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #334155' }}>
             <button type="button" onClick={() => setSplitMode('EQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'EQUAL' ? '#334155' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Equal Split</button>
             <button type="button" onClick={() => setSplitMode('UNEQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Diff Bill</button>
@@ -223,7 +207,6 @@ const AddExpense = () => {
 
           <div className="card" style={{ padding: '25px', borderRadius: '28px', background: '#1e293b', marginBottom: '20px', border: '1px solid #334155' }}>
             
-            {/* 🔥 Logic Change: Equal me input dikhao, Diff me automatic total dikhao */}
             <div style={{ borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '20px' }}>
                 <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>TOTAL AMOUNT</label>
                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
@@ -268,7 +251,6 @@ const AddExpense = () => {
                         <input type="number" placeholder="0" value={manualAmounts[u.id] || ''} onChange={(e) => handleManualChange(u.id, e.target.value)} style={{ width: '70px', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none', textAlign: 'right' }} />
                       </div>
                     ) : (
-                        // Equal Mode Selection Checkbox UI
                         isSelected ? <CheckCircle size={22} color="#10b981" fill="#10b981" stroke="black" /> : <Circle size={22} color="#64748b" />
                     )}
                   </div>

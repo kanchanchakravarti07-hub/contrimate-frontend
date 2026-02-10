@@ -8,12 +8,11 @@ const Account = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
-    // Load data from LocalStorage
     const stored = JSON.parse(localStorage.getItem('user'));
     if (stored) {
         setUser({
             ...stored,
-            phone: stored.phoneNumber || '' // Agar phone number nahi hai to empty rakho
+            phone: stored.phoneNumber || '' 
         });
     }
   }, []);
@@ -21,28 +20,23 @@ const Account = () => {
   const handleSave = () => {
     if(!user.name || !user.phone) return alert("Name and Phone are required!");
 
-    // 1. Update Local Storage
     const updatedUser = { ...user, phoneNumber: user.phone };
     localStorage.setItem('user', JSON.stringify(updatedUser));
     
-    // 2. Show Success Message
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000); // 2 sec baad gayab ho jayega
+    setTimeout(() => setIsSaved(false), 2000); 
   };
 
   return (
     <div className="container" style={{background:'#0f172a', minHeight:'100vh', color:'white', padding:'20px'}}>
       
-      {/* Header */}
       <div style={{display:'flex', alignItems:'center', gap:'15px', marginBottom:'30px'}}>
         <ArrowLeft onClick={() => navigate(-1)} style={{cursor:'pointer'}} />
         <h2 style={{margin:0, fontSize:'20px'}}>Account Settings</h2>
       </div>
 
-      {/* Form Card */}
       <div className="card" style={{background:'#1e293b', padding:'20px', borderRadius:'16px', border:'1px solid #334155'}}>
         
-        {/* FULL NAME */}
         <div style={{marginBottom:'20px'}}>
             <label style={{display:'block', marginBottom:'8px', color:'#94a3b8', fontSize:'12px'}}>FULL NAME</label>
             <div style={{display:'flex', alignItems:'center', background:'#0f172a', borderRadius:'10px', padding:'12px', border:'1px solid #334155'}}>
@@ -55,7 +49,6 @@ const Account = () => {
             </div>
         </div>
 
-        {/* EMAIL (Read Only) */}
         <div style={{marginBottom:'20px'}}>
             <label style={{display:'block', marginBottom:'8px', color:'#94a3b8', fontSize:'12px'}}>EMAIL ADDRESS</label>
             <div style={{display:'flex', alignItems:'center', background:'#0f172a', borderRadius:'10px', padding:'12px', border:'1px solid #334155', opacity: 0.7}}>
@@ -68,7 +61,6 @@ const Account = () => {
             </div>
         </div>
 
-        {/* PHONE NUMBER (Simple Input) */}
         <div style={{marginBottom:'30px'}}>
             <label style={{display:'block', marginBottom:'8px', color:'#94a3b8', fontSize:'12px'}}>PHONE NUMBER</label>
             <div style={{display:'flex', alignItems:'center', background:'#0f172a', borderRadius:'10px', padding:'12px', border:'1px solid #334155'}}>
@@ -83,7 +75,6 @@ const Account = () => {
             </div>
         </div>
 
-        {/* Save Button */}
         <button 
             onClick={handleSave} 
             style={{

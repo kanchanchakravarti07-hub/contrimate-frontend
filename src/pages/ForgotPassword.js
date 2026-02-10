@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, ArrowLeft, Key, Lock, Eye, EyeOff, Check } from 'lucide-react'; // ✅ Imported
+import { Mail, ArrowLeft, Key, Lock, Eye, EyeOff, Check } from 'lucide-react';
 import { API_BASE_URL } from '../config'; 
 
 const ForgotPassword = () => {
@@ -13,7 +13,6 @@ const ForgotPassword = () => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // --- PASSWORD VALIDATION LOGIC ---
   const isLengthValid = newPassword.length >= 8;
   const isSymbolValid = /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
 
@@ -57,7 +56,7 @@ const ForgotPassword = () => {
         
         <div style={{textAlign:'center', marginBottom:'30px'}}>
           <h2 style={{fontSize:'2rem', fontWeight:'700', color: 'white', margin:0}}>{step === 1 ? 'Forgot Password' : 'Reset Password'}</h2>
-          {/* ✅ SPAM WARNING ADDED */}
+          
           <div style={{color:'#94a3b8', marginTop:'10px'}}>
             {step === 1 ? "Enter your email to receive OTP" : (
                  <>Enter OTP sent to <span style={{color:'white'}}>{email}</span><br/><span style={{color: '#f59e0b', fontWeight: 'bold'}}>⚠️ Check Spam/Junk Folder</span></>
@@ -90,7 +89,6 @@ const ForgotPassword = () => {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </div>
               
-              {/* ✅ LIVE PASSWORD STRENGTH CHECKER */}
               <div style={{marginTop: '10px', paddingLeft: '5px'}}>
                 <div style={validationStyle(isLengthValid)}>
                     {isLengthValid ? <Check size={14} /> : <div style={{width:14, height:14, borderRadius:'50%', border:'1px solid #64748b'}}/>} 

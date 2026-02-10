@@ -5,7 +5,6 @@ import { ArrowLeft, Key, Shield, Eye, X, Check, Users, Lock, Globe, ChevronRight
 const Privacy = () => {
   const navigate = useNavigate();
 
-  // --- STATES ---
   const [is2FA, setIs2FA] = useState(false);
   const [visibility, setVisibility] = useState('Friends Only');
   const [lastChanged, setLastChanged] = useState('Last changed 3 months ago'); 
@@ -26,13 +25,12 @@ const Privacy = () => {
 
   const handleVisibilitySelect = (option) => {
     setVisibility(option);
-    setTimeout(() => setShowVisModal(false), 300); // Smooth close
+    setTimeout(() => setShowVisModal(false), 300); 
   };
 
   return (
     <div className="container" style={{background:'#0f172a', minHeight:'100vh', color:'white', padding:'20px 20px 100px 20px'}}>
       
-      {/* 🚀 Header */}
       <div style={{display:'flex', alignItems:'center', gap:'15px', padding: '20px 0', marginBottom:'10px'}}>
         <div onClick={() => navigate(-1)} style={{ background: '#1e293b', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #334155' }}>
           <ArrowLeft size={20} color="white" />
@@ -42,11 +40,9 @@ const Privacy = () => {
 
       <div style={{display:'flex', flexDirection:'column', gap:'20px'}}>
         
-        {/* 🛡️ Security Section */}
         <div style={{background:'#1e293b', padding:'25px', borderRadius:'28px', border:'1px solid #334155', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
             <h3 style={{margin:'0 0 20px 0', fontSize:'12px', color:'#64748b', letterSpacing:'1.5px', fontWeight:'800', textTransform:'uppercase'}}>SECURITY SETTINGS</h3>
             
-            {/* Change Password */}
             <div onClick={() => setShowPassModal(true)} style={{display:'flex', alignItems:'center', gap:'18px', paddingBottom:'20px', borderBottom:'1px solid rgba(51, 65, 85, 0.5)', cursor:'pointer'}}>
                 <div style={{background:'rgba(245, 158, 11, 0.15)', padding:'12px', borderRadius:'14px'}}>
                     <Key size={22} color="#f59e0b"/>
@@ -58,7 +54,6 @@ const Privacy = () => {
                 <ChevronRight size={18} color="#475569"/>
             </div>
             
-            {/* 2FA Toggle */}
             <div onClick={() => setIs2FA(!is2FA)} style={{display:'flex', alignItems:'center', gap:'18px', paddingTop:'20px', cursor:'pointer'}}>
                 <div style={{background:'rgba(16, 185, 129, 0.15)', padding:'12px', borderRadius:'14px'}}>
                     <Shield size={22} color="#10b981"/>
@@ -86,11 +81,9 @@ const Privacy = () => {
             </div>
         </div>
 
-        {/* 👁️ Data Privacy Section */}
         <div style={{background:'#1e293b', padding:'25px', borderRadius:'28px', border:'1px solid #334155', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'}}>
             <h3 style={{margin:'0 0 20px 0', fontSize:'12px', color:'#64748b', letterSpacing:'1.5px', fontWeight:'800', textTransform:'uppercase'}}>DATA VISIBILITY</h3>
             
-            {/* Visibility Selector */}
             <div onClick={() => setShowVisModal(true)} style={{display:'flex', alignItems:'center', gap:'18px', cursor:'pointer'}}>
                 <div style={{background:'rgba(236, 72, 153, 0.15)', padding:'12px', borderRadius:'14px'}}>
                     <Eye size={22} color="#ec4899"/>
@@ -104,7 +97,6 @@ const Privacy = () => {
         </div>
       </div>
 
-      {/* 📱 Visibility Modal (Bottom Sheet Style) */}
       {showVisModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display:'flex', alignItems:'flex-end', justifyContent:'center', zIndex:1000}}>
             <div style={{
@@ -146,7 +138,6 @@ const Privacy = () => {
         </div>
       )}
 
-      {/* 🔒 Password Modal (Center Card Style) */}
       {showPassModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding: '20px'}}>
             <div style={{width:'100%', maxWidth:'400px', padding:'30px', background:'#1e293b', borderRadius:'32px', border:'1px solid #334155', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>

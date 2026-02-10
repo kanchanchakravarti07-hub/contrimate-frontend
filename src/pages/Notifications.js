@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Bell, Info, Clock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Bell, Info, Clock } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Notifications = () => {
@@ -79,7 +79,6 @@ const Notifications = () => {
 
   return (
     <div className="container" style={{ paddingBottom: '40px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0', marginBottom: '10px' }}>
         <ArrowLeft onClick={() => navigate('/home')} style={{ cursor: 'pointer' }} />
         <h2 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>Activity</h2>

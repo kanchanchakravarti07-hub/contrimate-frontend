@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, HandCoins, Receipt, TrendingUp, Calendar, ChevronRight, PieChart as PieIcon } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { ArrowLeft, HandCoins, Receipt, TrendingUp, Calendar, PieChart as PieIcon } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#f43f5e', '#8b5cf6', '#ec4899'];
@@ -84,7 +84,6 @@ const Analysis = () => {
   return (
     <div className="container" style={{ paddingBottom: '100px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
       
-      {/* 🚀 Header */}
       <div style={{ padding: '20px 0', display: 'flex', alignItems: 'center', gap: '15px' }}>
         <div onClick={() => navigate('/home')} style={{ background: '#1e293b', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #334155' }}>
           <ArrowLeft size={20} color="white" />
@@ -92,7 +91,6 @@ const Analysis = () => {
         <h2 style={{ fontSize: '22px', fontWeight: '800', margin: 0 }}>Spending Analysis</h2>
       </div>
 
-      {/* 📅 Filter Tabs */}
       <div style={{display:'flex', background:'#1e293b', padding:'5px', borderRadius:'16px', marginBottom:'25px', border:'1px solid #334155'}}>
         {['WEEK', 'MONTH', 'YEAR'].map(filter => (
             <button 
@@ -114,7 +112,6 @@ const Analysis = () => {
         <div style={{textAlign:'center', marginTop:'100px'}}><TrendingUp className="animate-bounce" color="#10b981" size={40}/></div>
       ) : (
         <>
-            {/* 💰 Highlight Card */}
             <div style={{ 
               padding: '30px', borderRadius: '28px', 
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
@@ -130,7 +127,6 @@ const Analysis = () => {
                 </div>
             </div>
 
-            {/* 📊 Chart Section */}
             <h3 style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '18px', letterSpacing:'1.5px', fontWeight:'800', display:'flex', alignItems:'center', gap:'10px' }}>
                 <PieIcon size={18} color="#10b981"/> CATEGORY WISE
             </h3>
@@ -161,7 +157,6 @@ const Analysis = () => {
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    {/* 🔥 Custom Professional Legend */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
                         {filteredData.map((item, index) => (
                             <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: '#0f172a', borderRadius: '12px' }}>
@@ -180,7 +175,6 @@ const Analysis = () => {
                 )}
             </div>
 
-            {/* 💸 Settlements Section */}
             {settlements.length > 0 && (
                 <>
                     <h3 style={{ fontSize: '14px', color: '#f43f5e', marginBottom: '18px', letterSpacing:'1.5px', fontWeight:'800' }}>SETTLEMENT HISTORY</h3>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, User, Mail, Lock, AtSign, Key, CheckCircle, ArrowRight, Eye, EyeOff, Check } from 'lucide-react'; // ✅ Imported
+import { UserPlus, User, Mail, Lock, AtSign, Key, CheckCircle, ArrowRight, Eye, EyeOff, Check } from 'lucide-react';
 import { API_BASE_URL } from '../config'; 
 
 const Signup = () => {
@@ -15,7 +15,6 @@ const Signup = () => {
   const [password, setPassword] = useState('');
   const [upiId, setUpiId] = useState('');
 
-  // --- PASSWORD VALIDATION LOGIC ---
   const isLengthValid = password.length >= 8;
   const isSymbolValid = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
@@ -31,12 +30,15 @@ const Signup = () => {
     finally { setLoading(false); }
   };
 
-  const handleVerifyOtp = async (e) => { e.preventDefault(); if (otp.length < 6) return alert("6 Digit OTP!"); setStep(3); };
+  const handleVerifyOtp = async (e) => { 
+      e.preventDefault(); 
+      if (otp.length < 6) return alert("6 Digit OTP!"); 
+      setStep(3); 
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
     if (!upiId.includes('@') || upiId.length < 5) return alert("Invalid UPI ID!");
-    // Strong Password Check before Submit
     if (!isLengthValid || !isSymbolValid) return alert("Password weak hai! Min 8 chars aur @#$ symbol use karo.");
     
     setLoading(true);
@@ -58,10 +60,9 @@ const Signup = () => {
   };
   const iconStyle = { position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', color: '#10b981', pointerEvents: 'none' };
   
-  // Validation Text Style
   const validationStyle = (isValid) => ({
     fontSize: '13px', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '5px',
-    color: isValid ? '#10b981' : '#64748b', // Green if valid, Gray if not
+    color: isValid ? '#10b981' : '#64748b', 
     transition: 'color 0.3s ease'
   });
 
@@ -73,7 +74,6 @@ const Signup = () => {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '800', background: 'linear-gradient(to right, #10b981, #34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
             {step === 1 ? 'Get Started' : step === 2 ? 'Verify Email' : 'Final Details'}
           </h1>
-          {/* ✅ SPAM WARNING ADDED */}
           <div style={{ color: '#94a3b8', marginTop: '10px', fontSize: '15px' }}>
             {step === 1 ? 'Enter email to receive OTP' : step === 2 ? (
                <>OTP sent to <span style={{color:'white', fontWeight:'bold'}}>{email}</span><br/><span style={{color: '#f59e0b', fontWeight: 'bold'}}>⚠️ Check Spam/Junk Folder</span></>
@@ -123,7 +123,6 @@ const Signup = () => {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </div>
               
-              {/* ✅ LIVE PASSWORD STRENGTH CHECKER */}
               <div style={{marginTop: '10px', paddingLeft: '5px'}}>
                 <div style={validationStyle(isLengthValid)}>
                     {isLengthValid ? <Check size={14} /> : <div style={{width:14, height:14, borderRadius:'50%', border:'1px solid #64748b'}}/>} 

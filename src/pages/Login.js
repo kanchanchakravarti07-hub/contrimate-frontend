@@ -15,7 +15,6 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     const fullUrl = `${API_BASE_URL}/api/users/all`;
-    console.log("🚀 Trying to connect to:", fullUrl);
 
     try {
       const res = await fetch(fullUrl);
@@ -25,7 +24,6 @@ const Login = () => {
       const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
       if (foundUser) {
-        // Yahan simple check: Jo DB mein hai wahi match hona chahiye
         if(foundUser.password && foundUser.password !== password) {
              alert("Wrong Password!");
              setLoading(false);
@@ -37,7 +35,7 @@ const Login = () => {
         alert("Account nahi mila! Pehle Sign Up karo.");
       }
     } catch (error) {
-      console.error("❌ ERROR:", error);
+      console.error("ERROR:", error);
       alert(`Connection Failed: ${error.message}`);
     } finally {
       setLoading(false);
@@ -69,7 +67,7 @@ const Login = () => {
             <input type="email" placeholder="Email Address" value={email} onChange={(e)=>setEmail(e.target.value)} required style={inputStyle} />
           </div>
 
-          <div style={{marginBottom:'20px', position:'relative'}}> {/* Margin thoda kam kiya */}
+          <div style={{marginBottom:'20px', position:'relative'}}>
             <Lock style={{position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'#10b981', pointerEvents:'none'}} size={20}/>
             <input
               type={showPassword ? "text" : "password"}

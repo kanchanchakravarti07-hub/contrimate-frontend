@@ -21,8 +21,6 @@ const PaymentOptions = () => {
   const handleFinalSettle = async (appName) => {
     if (editableAmount <= 0) return alert("Bhai, 0 rupaye kaun deta hai?");
 
-    console.log(`Redirecting to ${appName} with ₹${editableAmount}`);
-
     const user = JSON.parse(localStorage.getItem('user'));
 
     try {

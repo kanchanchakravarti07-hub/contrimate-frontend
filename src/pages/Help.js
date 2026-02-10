@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Mail, ExternalLink, HelpCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Mail, ExternalLink, HelpCircle } from 'lucide-react';
 
 const Help = () => {
   const navigate = useNavigate();
@@ -27,7 +27,6 @@ const Help = () => {
   return (
     <div className="container" style={{ background: '#0f172a', minHeight: '100vh', color: 'white', padding: '20px 20px 100px 20px' }}>
       
-      {/* 🚀 Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0', marginBottom: '10px' }}>
         <div onClick={() => navigate(-1)} style={{ background: '#1e293b', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #334155' }}>
           <ArrowLeft size={20} color="white" />
@@ -35,7 +34,6 @@ const Help = () => {
         <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800' }}>Help Center</h2>
       </div>
 
-      {/* 💡 Support Hero Card */}
       <div style={{ 
         background: 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)', 
         padding: '25px', borderRadius: '24px', marginBottom: '30px', 
@@ -48,7 +46,6 @@ const Help = () => {
         </p>
       </div>
 
-      {/* 🙋 FAQ Section */}
       <h4 style={{ fontSize: '12px', color: '#64748b', marginBottom: '15px', letterSpacing: '1.5px', fontWeight: '800', textTransform: 'uppercase' }}>
         FREQUENTLY ASKED
       </h4>
@@ -68,7 +65,6 @@ const Help = () => {
         ))}
       </div>
 
-      {/* 📧 Contact Section */}
       <h4 style={{ fontSize: '12px', color: '#64748b', marginBottom: '15px', letterSpacing: '1.5px', fontWeight: '800', textTransform: 'uppercase' }}>
         CONTACT US
       </h4>
@@ -93,7 +89,6 @@ const Help = () => {
         <ExternalLink size={18} color="#64748b" />
       </div>
 
-      {/* 💬 Support Button */}
       <div style={{ marginTop: '30px' }}>
         <button 
             onClick={handleEmailContact}
@@ -109,7 +104,6 @@ const Help = () => {
         </button>
       </div>
 
-      {/* Footer Version */}
       <p style={{ textAlign: 'center', marginTop: '40px', color: '#475569', fontSize: '11px', fontWeight: '600' }}>
         CONTRIMATE SUPPORT v1.0.0
       </p>
