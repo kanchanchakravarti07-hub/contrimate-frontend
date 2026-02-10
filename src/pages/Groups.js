@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, UserPlus, Trash2, ShieldCheck, X, CheckCircle, AtSign, Mail, User, Shield, Loader, BellRing, Clock, Eye, Wallet, ChevronRight } from 'lucide-react';
+import { Plus, Users, UserPlus, Trash2, ShieldCheck, X, CheckCircle, AtSign, Mail, User, Shield, Loader, BellRing, Clock, Eye, Wallet, ChevronRight, Search } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Groups = () => {
@@ -12,7 +12,7 @@ const Groups = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   const [showGroupModal, setShowGroupModal] = useState(false);
-  const [showFriendModal, setShowFriendModal] = useState(false);
+  const [showFriendModal, setShowFriendModal] = useState(false); // 🔥 Modal State
   
   const [viewFriend, setViewFriend] = useState(null);
   const [friendStats, setFriendStats] = useState({ spent: 0, friendsCount: 0 });
@@ -54,7 +54,6 @@ const Groups = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 🔥 Avatar rendering helper
   const renderAvatar = (userObj, size = '40px') => {
     return (
       <div style={{ width: size, height: size, borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', overflow: 'hidden', border: '1px solid #475569' }}>
@@ -86,8 +85,9 @@ const Groups = () => {
     }
   }, [viewFriend]);
 
+  // 🔥 Verification Logic
   const handleVerifyUPI = () => {
-    if (!newFriendUPI.includes('@')) return alert("Invalid Format!");
+    if (!newFriendUPI.includes('@')) return alert("Invalid UPI Format!");
     setIsVerifying(true);
     setTimeout(() => {
         setIsVerifying(false);
@@ -97,6 +97,24 @@ const Groups = () => {
             setNewFriendName(extractedName.charAt(0).toUpperCase() + extractedName.slice(1)); 
         }
     }, 1200);
+  };
+
+  const handleSendRequest = async () => {
+    if(!newFriendEmail || !isUpiVerified) return alert("Verify UPI and enter Email first!");
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/users/add-friend`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ myEmail: currentUser.email, friendEmail: newFriendEmail.trim().toLowerCase() })
+        });
+        if(res.ok) {
+            alert("Friend Request Sent! 📩");
+            setShowFriendModal(false);
+            fetchData();
+        } else {
+            alert("User not found or already a friend!");
+        }
+    } catch (err) { alert("Server Error"); }
   };
 
   const handleCreateGroup = async () => {
@@ -133,6 +151,7 @@ const Groups = () => {
 
   return (
     <div className="container" style={{paddingBottom:'100px', background:'#0f172a', minHeight:'100vh', color:'white'}}>
+      {/* ... (Tabs Header Same) ... */}
       <div style={{padding:'20px 0'}}>
         <h2 style={{fontSize:'24px', fontWeight:'800', marginBottom:'20px'}}>Community</h2>
         <div style={{display:'flex', background:'#1e293b', padding:'5px', borderRadius:'14px', border:'1px solid #334155'}}>
@@ -143,45 +162,39 @@ const Groups = () => {
 
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-            {activeTab === 'GROUPS' && (
-                <>
-                {groups.length > 0 ? (
-                    groups.map(group => (
-                        <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
-                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
-                                <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                                    <div style={{width:'50px', height:'50px', background:'rgba(16, 185, 129, 0.1)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center'}}><Users size={24} color="#10b981"/></div>
-                                    <div>
-                                        <h4 style={{margin:0, fontSize:'17px'}}>{group.name}</h4>
-                                        <span style={{fontSize:'12px', color:'#94a3b8'}}>{group.members?.length || 0} members</span>
-                                    </div>
-                                </div>
-                                {group.adminId === currentUser?.id && <Trash2 size={18} color="#f43f5e" onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer'}}/>}
-                            </div>
-                            
-                            {/* 🔥 Group Members PFP stack */}
-                            <div style={{display:'flex', alignItems:'center', marginLeft:'5px'}}>
-                                {group.members?.slice(0, 5).map((member, index) => (
-                                    <div key={member.id} style={{ marginLeft: index === 0 ? 0 : '-10px', border: '2px solid #1e293b', borderRadius: '50%' }}>
-                                        {renderAvatar(member, '30px')}
-                                    </div>
-                                ))}
-                                {group.members?.length > 5 && (
-                                    <div style={{ marginLeft: '-10px', width: '30px', height: '30px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: '2px solid #1e293b', color:'#94a3b8' }}>
-                                        +{group.members.length - 5}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <p style={{textAlign:'center', color:'#64748b', marginTop:'40px'}}>No groups yet. Click + to create one.</p>
-                )}
-                </>
-            )}
+            {/* GROUPS TAB */}
+            {activeTab === 'GROUPS' && groups.map(group => (
+                 <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
+                 <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
+                     <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                         <div style={{width:'50px', height:'50px', background:'rgba(16, 185, 129, 0.1)', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center'}}><Users size={24} color="#10b981"/></div>
+                         <div>
+                             <h4 style={{margin:0, fontSize:'17px'}}>{group.name}</h4>
+                             <span style={{fontSize:'12px', color:'#94a3b8'}}>{group.members?.length || 0} members</span>
+                         </div>
+                     </div>
+                     {group.adminId === currentUser?.id && <Trash2 size={18} color="#f43f5e" onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer'}}/>}
+                 </div>
+                 
+                 <div style={{display:'flex', alignItems:'center', marginLeft:'5px'}}>
+                     {group.members?.slice(0, 5).map((member, index) => (
+                         <div key={member.id} style={{ marginLeft: index === 0 ? 0 : '-10px', border: '2px solid #1e293b', borderRadius: '50%' }}>
+                             {renderAvatar(member, '30px')}
+                         </div>
+                     ))}
+                     {group.members?.length > 5 && (
+                         <div style={{ marginLeft: '-10px', width: '30px', height: '30px', borderRadius: '50%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', border: '2px solid #1e293b', color:'#94a3b8' }}>
+                             +{group.members.length - 5}
+                         </div>
+                     )}
+                 </div>
+             </div>
+            ))}
 
+            {/* FRIENDS TAB */}
             {activeTab === 'FRIENDS' && (
                 <>
+                    {/* ... (Pending Requests Section) ... */}
                     {incomingRequests.length > 0 && (
                         <div style={{marginBottom:'20px'}}>
                             <h4 style={{color:'#f43f5e', fontSize:'12px', marginBottom:'10px', letterSpacing:'1px', fontWeight:'bold'}}>PENDING REQUESTS</h4>
@@ -197,32 +210,24 @@ const Groups = () => {
                         </div>
                     )}
 
-                    {friends.length > 0 ? (
-                        friends.map(friend => (
-                            <div key={friend.id} style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155', marginBottom:'10px'}}>
-                                <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                                    {/* 🔥 Real Friend PFP render */}
-                                    {renderAvatar(friend, '45px')}
-                                    <div>
-                                        <h4 style={{margin:0, fontSize:'15px'}}>{friend.name}</h4>
-                                        <span style={{fontSize:'12px', color:'#94a3b8'}}>{friend.email}</span>
-                                    </div>
-                                </div>
-                                <div style={{display:'flex', gap:'8px'}}>
-                                    <button onClick={() => setViewFriend(friend)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Eye size={16} color="#3b82f6"/></button>
-                                    <button onClick={() => handleDelete('USER', friend.id)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Trash2 size={16} color="#f43f5e"/></button>
+                    {friends.length > 0 ? friends.map(friend => (
+                        <div key={friend.id} style={{padding:'15px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155', marginBottom:'10px'}}>
+                            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                {renderAvatar(friend, '45px')}
+                                <div>
+                                    <h4 style={{margin:0, fontSize:'15px'}}>{friend.name}</h4>
+                                    <span style={{fontSize:'12px', color:'#94a3b8'}}>{friend.email}</span>
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <div style={{textAlign:'center', marginTop:'60px', display:'flex', flexDirection:'column', alignItems:'center', gap:'15px', opacity: 0.6}}>
-                            <div style={{width:'80px', height:'80px', borderRadius:'50%', background:'#1e293b', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                                <UserPlus size={40} color="#64748b"/>
+                            <div style={{display:'flex', gap:'8px'}}>
+                                <button onClick={() => setViewFriend(friend)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Eye size={16} color="#3b82f6"/></button>
+                                <button onClick={() => handleDelete('USER', friend.id)} style={{background:'#0f172a', border:'1px solid #334155', padding:'8px', borderRadius:'8px'}}><Trash2 size={16} color="#f43f5e"/></button>
                             </div>
-                            <div style={{textAlign:'center'}}>
-                                <h3 style={{margin:0, fontSize:'18px', color:'white'}}>No friends yet</h3>
-                                <p style={{margin:'5px 0 0 0', fontSize:'13px', color:'#94a3b8'}}>Click the button below to add your first friend!</p>
-                            </div>
+                        </div>
+                    )) : (
+                        <div style={{textAlign:'center', marginTop:'60px', opacity: 0.6}}>
+                            <UserPlus size={40} color="#64748b" style={{marginBottom:'10px'}}/>
+                            <h3 style={{margin:0, fontSize:'18px'}}>No friends yet</h3>
                         </div>
                     )}
                 </>
@@ -237,7 +242,38 @@ const Groups = () => {
         </button>
       </div>
 
-      {/* PROFILE MODAL */}
+      {/* 🔥 ADD FRIEND MODAL (THIS WAS MISSING) */}
+      {showFriendModal && (
+        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
+            <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
+                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'20px'}}>
+                    <h3 style={{margin:0, color:'white'}}>Add New Friend</h3>
+                    <X onClick={() => setShowFriendModal(false)} style={{cursor:'pointer', color:'white'}}/>
+                </div>
+
+                <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
+                    <div style={{position:'relative'}}>
+                        <input placeholder="Enter UPI ID (e.g. name@upi)" value={newFriendUPI} onChange={e => setNewFriendUPI(e.target.value)} style={{width:'100%', padding:'14px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', outline:'none'}} />
+                        <button onClick={handleVerifyUPI} style={{position:'absolute', right:'10px', top:'10px', background:'#3b82f6', border:'none', color:'white', padding:'5px 10px', borderRadius:'8px', fontSize:'12px'}}>Verify</button>
+                    </div>
+
+                    {isUpiVerified && (
+                        <div style={{background:'rgba(16, 185, 129, 0.1)', padding:'12px', borderRadius:'12px', border:'1px solid #10b981', display:'flex', alignItems:'center', gap:'10px'}}>
+                            <CheckCircle size={18} color="#10b981"/>
+                            <span style={{fontSize:'14px', color:'#10b981'}}>Found: {newFriendName}</span>
+                        </div>
+                    )}
+
+                    <input placeholder="Friend's Email Address" value={newFriendEmail} onChange={e => setNewFriendEmail(e.target.value)} style={{width:'100%', padding:'14px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', outline:'none'}} />
+                    
+                    <button onClick={handleSendRequest} style={{width:'100%', padding:'15px', background:'#10b981', border:'none', borderRadius:'15px', color:'white', fontWeight:'bold', cursor:'pointer', marginTop:'10px'}}>Send Friend Request</button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* ... (Existing Modals: Profile & Group) ... */}
+      {/* (Keep Group Modal and Profile Modal as they were) */}
       {viewFriend && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'350px', background:'#1e293b', borderRadius:'24px', border:'1px solid #334155', overflow:'hidden'}}>
@@ -246,9 +282,7 @@ const Groups = () => {
                     <X onClick={() => setViewFriend(null)} style={{cursor:'pointer', color:'white'}}/>
                 </div>
                 <div style={{padding:'30px 20px', textAlign:'center'}}>
-                    <div style={{margin:'0 auto 15px'}}>
-                        {renderAvatar(viewFriend, '80px')}
-                    </div>
+                    <div style={{margin:'0 auto 15px'}}>{renderAvatar(viewFriend, '80px')}</div>
                     <h2 style={{margin:0, color:'white'}}>{viewFriend.name}</h2>
                     <p style={{color:'#94a3b8', marginBottom:'25px'}}>{viewFriend.email}</p>
                     <div style={{display:'flex', gap:'10px'}}>
@@ -268,7 +302,6 @@ const Groups = () => {
         </div>
       )}
 
-      {/* GROUP MODAL */}
       {showGroupModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
@@ -293,6 +326,7 @@ const Groups = () => {
             </div>
         </div>
       )}
+
     </div>
   );
 };
