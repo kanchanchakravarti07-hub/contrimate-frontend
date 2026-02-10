@@ -33,13 +33,30 @@ const SettleUp = () => {
       });
   };
 
+  // 🔥 Helper to render PFP (Same as Groups.js)
+  const renderAvatar = (friend, size = '45px') => {
+    return (
+      <div style={{ 
+        width: size, height: size, borderRadius: '12px', 
+        background: '#333', color: 'white',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 'bold', fontSize: '18px', overflow: 'hidden',
+        border: '1px solid #444'
+      }}>
+        {friend.profilePic ? (
+          <img src={friend.profilePic} alt="pfp" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span>{friend.name ? friend.name.charAt(0).toUpperCase() : '?'}</span>
+        )}
+      </div>
+    );
+  };
+
   const handleSettle = async (friendId, friendName, amount) => {
     const absAmount = Math.abs(amount);
-
     if (!window.confirm(`Mark ₹${absAmount} as paid to ${friendName}?`)) return;
 
     setLoading(true);
-
     try {
       const settlementData = {
         description: `Settled with ${friendName}`,
@@ -75,12 +92,8 @@ const SettleUp = () => {
       const res = await fetch(`${API_BASE_URL}/api/notifications/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientId: friendId,
-          message: message
-        })
+        body: JSON.stringify({ recipientId: friendId, message: message })
       });
-
       if (res.ok) {
         alert(`Request sent to ${friendName} successfully! ✅`);
       } else {
@@ -92,9 +105,9 @@ const SettleUp = () => {
   };
 
   return (
-    <div className="container" style={{ paddingBottom: '80px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px', marginTop: '10px' }}>
-        <ArrowLeft onClick={() => navigate('/home')} style={{ cursor: 'pointer', color: 'white' }} />
+    <div className="container" style={{ paddingBottom: '80px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0', marginBottom: '10px' }}>
+        <ArrowLeft onClick={() => navigate('/home')} style={{ cursor: 'pointer' }} />
         <h2 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>Settle Up</h2>
         <RefreshCcw
           size={18}
@@ -103,7 +116,7 @@ const SettleUp = () => {
         />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', padding: '0 15px' }}>
         {loading ? (
           <p style={{ textAlign: 'center', color: '#888' }}>Checking accounts...</p>
         ) : friends.length > 0 ? (
@@ -114,27 +127,22 @@ const SettleUp = () => {
             const isSettled = balance === 0;
 
             return (
-              <div key={friend.userId || index} className="card" style={{
+              <div key={friend.userId || index} style={{
                 padding: '20px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#1e1e1e',
-                borderRadius: '16px',
-                borderLeft: isOwed ? '5px solid #10b981' : isDebt ? '5px solid #f43f5e' : '5px solid #555'
+                background: '#1e293b',
+                borderRadius: '20px',
+                border: '1px solid #334155',
+                borderLeft: isOwed ? '6px solid #10b981' : isDebt ? '6px solid #f43f5e' : '6px solid #475569'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  <div style={{
-                    width: '45px', height: '45px', borderRadius: '12px',
-                    background: '#333', color: 'white',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 'bold', fontSize: '18px'
-                  }}>
-                    {friend.name ? friend.name.charAt(0).toUpperCase() : '?'}
-                  </div>
+                  {/* 🔥 Real PFP Rendered Here */}
+                  {renderAvatar(friend, '50px')}
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '16px', color: 'white' }}>{friend.name}</h4>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: isOwed ? '#10b981' : isDebt ? '#f43f5e' : '#888' }}>
+                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>{friend.name}</h4>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: isOwed ? '#10b981' : isDebt ? '#f43f5e' : '#94a3b8', fontWeight: '600' }}>
                       {isOwed ? `Owes you ₹${balance.toFixed(0)}` : isDebt ? `You owe ₹${Math.abs(balance).toFixed(0)}` : 'All Settled'}
                     </p>
                   </div>
@@ -145,10 +153,10 @@ const SettleUp = () => {
                     <button
                       onClick={() => handleRequest(friend.userId, friend.name, balance.toFixed(0))}
                       style={{
-                        background: 'rgba(16, 185, 129, 0.15)', color: '#10b981',
-                        border: 'none', padding: '10px 15px', borderRadius: '10px',
+                        background: 'rgba(16, 185, 129, 0.1)', color: '#10b981',
+                        border: '1px solid rgba(16, 185, 129, 0.2)', padding: '10px 18px', borderRadius: '12px',
                         fontWeight: 'bold', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', gap: '5px'
+                        alignItems: 'center', gap: '8px'
                       }}
                     >
                       <Send size={16} /> Request
@@ -160,9 +168,10 @@ const SettleUp = () => {
                       onClick={() => handleSettle(friend.userId, friend.name, balance)}
                       style={{
                         background: '#f43f5e', color: 'white',
-                        border: 'none', padding: '10px 15px', borderRadius: '10px',
+                        border: 'none', padding: '10px 18px', borderRadius: '12px',
                         fontWeight: 'bold', cursor: 'pointer', display: 'flex',
-                        alignItems: 'center', gap: '5px'
+                        alignItems: 'center', gap: '8px',
+                        boxShadow: '0 4px 12px rgba(244, 63, 94, 0.2)'
                       }}
                     >
                       <Wallet size={16} /> Pay
@@ -170,8 +179,8 @@ const SettleUp = () => {
                   )}
 
                   {isSettled && (
-                    <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
-                      <CheckCircle size={16} /> Settled
+                    <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: '600' }}>
+                      <CheckCircle size={18} color="#10b981" /> Settled
                     </div>
                   )}
                 </div>
@@ -179,9 +188,11 @@ const SettleUp = () => {
             );
           })
         ) : (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-            <CheckCircle size={40} style={{ opacity: 0.2, marginBottom: '10px' }} />
-            <p>You are all settled up!</p>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <div style={{ width: '80px', height: '80px', background: '#1e293b', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <CheckCircle size={40} style={{ opacity: 0.3 }} />
+            </div>
+            <p style={{ fontSize: '16px', fontWeight: '600' }}>You are all settled up!</p>
           </div>
         )}
       </div>
