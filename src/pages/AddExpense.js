@@ -30,8 +30,14 @@ const AddExpense = () => {
         
         fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${loggedInUser.id}`)
           .then(res => res.json())
-          .then(data => setGroups(data))
-          .catch(err => console.error(err));
+          .then(data => {
+              if(Array.isArray(data)) setGroups(data);
+              else setGroups([]); // Crash proof
+          })
+          .catch(err => {
+              console.error(err);
+              setGroups([]);
+          });
 
         fetch(`${API_BASE_URL}/api/users/all`)
           .then(res => res.json())
@@ -51,7 +57,8 @@ const AddExpense = () => {
     fetch(`${API_BASE_URL}/api/users/my-friends?email=${loggedInUser.email}`)
       .then(res => res.json())
       .then(friends => {
-        const all = [loggedInUser, ...friends];
+        const safeFriends = Array.isArray(friends) ? friends : [];
+        const all = [loggedInUser, ...safeFriends];
         initializeUsers(all);
         setSelectedGroup(null);
         setFlowStep('FORM');
@@ -178,7 +185,8 @@ const AddExpense = () => {
                   <h3 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Select Group</h3>
                 </div>
                 <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {groups.map(g => (
+                  {/* SAFE MAP: Check if groups is array */}
+                  {Array.isArray(groups) && groups.map(g => (
                     <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '18px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
                       <ChevronRight size={18} color="#475569" />

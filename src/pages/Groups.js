@@ -34,16 +34,17 @@ const Groups = () => {
       setCurrentUser(user);
 
       const [groupsRes, friendsRes, incReqRes, sentReqRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${user.id}`),
-        fetch(`${API_BASE_URL}/api/users/my-friends?email=${user.email}`),
-        fetch(`${API_BASE_URL}/api/users/pending-requests?email=${user.email}`),
-        fetch(`${API_BASE_URL}/api/users/sent-requests?email=${user.email}`)
+        fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${user.id}`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/users/my-friends?email=${user.email}`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/users/pending-requests?email=${user.email}`).then(res => res.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/users/sent-requests?email=${user.email}`).then(res => res.json()).catch(() => [])
       ]);
       
-      if (groupsRes.ok) setGroups(await groupsRes.json());
-      if (friendsRes.ok) setFriends(await friendsRes.json());
-      if (incReqRes.ok) setIncomingRequests(await incReqRes.json());
-      if (sentReqRes.ok) setSentRequests(await sentReqRes.json());
+      // Safety Check: Ensure data is array before setting
+      setGroups(Array.isArray(groupsRes) ? groupsRes : []);
+      setFriends(Array.isArray(friendsRes) ? friendsRes : []);
+      setIncomingRequests(Array.isArray(incReqRes) ? incReqRes : []);
+      setSentRequests(Array.isArray(sentReqRes) ? sentReqRes : []);
       
       setLoading(false);
     } catch (err) {
@@ -69,8 +70,8 @@ const Groups = () => {
   useEffect(() => {
     if (viewFriend) {
         setStatsLoading(true);
-        const expensePromise = fetch(`${API_BASE_URL}/api/expenses/user/${viewFriend.id}`).then(res => res.json());
-        const friendListPromise = fetch(`${API_BASE_URL}/api/users/my-friends?email=${viewFriend.email}`).then(res => res.json());
+        const expensePromise = fetch(`${API_BASE_URL}/api/expenses/user/${viewFriend.id}`).then(res => res.json()).catch(() => []);
+        const friendListPromise = fetch(`${API_BASE_URL}/api/users/my-friends?email=${viewFriend.email}`).then(res => res.json()).catch(() => []);
 
         Promise.all([expensePromise, friendListPromise])
             .then(([expensesData, friendsData]) => {
@@ -99,7 +100,6 @@ const Groups = () => {
             alert("Error: Accept nahi ho paya.");
         }
     } catch (err) {
-        console.error(err);
         alert("Server Error!");
     }
   };
@@ -188,7 +188,8 @@ const Groups = () => {
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
             
-            {activeTab === 'GROUPS' && groups.map(group => (
+            {/* SAFE MAP: Array.isArray check added */}
+            {activeTab === 'GROUPS' && Array.isArray(groups) && groups.map(group => (
                  <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
                      <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
@@ -202,7 +203,7 @@ const Groups = () => {
                  </div>
                  
                  <div style={{display:'flex', alignItems:'center', marginLeft:'5px'}}>
-                     {group.members?.slice(0, 5).map((member, index) => (
+                     {Array.isArray(group.members) && group.members.slice(0, 5).map((member, index) => (
                          <div key={member.id} style={{ marginLeft: index === 0 ? 0 : '-10px', border: '2px solid #1e293b', borderRadius: '50%' }}>
                              {renderAvatar(member, '30px')}
                          </div>
@@ -219,7 +220,7 @@ const Groups = () => {
             {activeTab === 'FRIENDS' && (
                 <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
                     
-                    {incomingRequests.length > 0 && (
+                    {Array.isArray(incomingRequests) && incomingRequests.length > 0 && (
                         <div>
                             <h4 style={{fontSize:'12px', color:'#f43f5e', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>PENDING FOR YOU</h4>
                             {incomingRequests.map(req => (
@@ -242,7 +243,7 @@ const Groups = () => {
                         </div>
                     )}
 
-                    {sentRequests.length > 0 && (
+                    {Array.isArray(sentRequests) && sentRequests.length > 0 && (
                         <div>
                             <h4 style={{fontSize:'12px', color:'#3b82f6', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>SENT REQUESTS</h4>
                             {sentRequests.map(req => (
@@ -261,7 +262,7 @@ const Groups = () => {
 
                     <div>
                         <h4 style={{fontSize:'12px', color:'#64748b', letterSpacing:'1.5px', marginBottom:'12px', fontWeight:'800'}}>MY FRIENDS</h4>
-                        {friends.length > 0 ? friends.map(friend => (
+                        {Array.isArray(friends) && friends.length > 0 ? friends.map(friend => (
                             <div key={friend.id} style={{padding:'18px', background:'#1e293b', borderRadius:'22px', border:'1px solid #334155', display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px'}}>
                                 <div style={{display:'flex', alignItems:'center', gap:'14px'}}>
                                     {renderAvatar(friend, '48px')}
@@ -360,7 +361,8 @@ const Groups = () => {
                 <input placeholder="Group Name" value={groupName} onChange={e => setGroupName(e.target.value)} style={{width:'100%', padding:'14px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', marginBottom:'20px', outline:'none'}} />
                 <p style={{fontSize:'12px', color:'#94a3b8', marginBottom:'10px'}}>SELECT MEMBERS</p>
                 <div style={{maxHeight:'200px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'10px', marginBottom:'20px'}}>
-                    {friends.map(f => (
+                    {/* Safe Map for friends in modal */}
+                    {Array.isArray(friends) && friends.map(f => (
                         <div key={f.id} onClick={() => setSelectedFriendIds(prev => prev.includes(f.id) ? prev.filter(id => id !== f.id) : [...prev, f.id])} style={{padding:'12px', borderRadius:'12px', background: selectedFriendIds.includes(f.id) ? 'rgba(16, 185, 129, 0.1)' : '#0f172a', border: selectedFriendIds.includes(f.id) ? '1px solid #10b981' : '1px solid #334155', display:'flex', alignItems:'center', gap:'10px', cursor:'pointer'}}>
                             {selectedFriendIds.includes(f.id) ? <CheckCircle size={18} color="#10b981"/> : <div style={{width:18, height:18, borderRadius:'50%', border:'1px solid #475569'}}/>}
                             <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
