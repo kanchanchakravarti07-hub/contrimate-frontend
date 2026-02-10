@@ -33,7 +33,6 @@ const SettleUp = () => {
       });
   };
 
-  // 🔥 Helper to render PFP (Same as Groups.js)
   const renderAvatar = (friend, size = '45px') => {
     return (
       <div style={{ 
@@ -52,38 +51,53 @@ const SettleUp = () => {
     );
   };
 
-  const handleSettle = async (friendId, friendName, amount) => {
-    const absAmount = Math.abs(amount);
-    if (!window.confirm(`Mark ₹${absAmount} as paid to ${friendName}?`)) return;
-
-    setLoading(true);
-    try {
-      const settlementData = {
-        description: `Settled with ${friendName}`,
-        totalAmount: parseFloat(absAmount),
-        category: "Settlement",
-        paidBy: { id: user.id },
-        splits: [{ user: { id: friendId }, amountOwed: parseFloat(absAmount) }]
-      };
-
-      const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settlementData)
-      });
-
-      if (res.ok) {
-        alert("Settlement Recorded! 🎉");
-        fetchDebts(user.id);
-      } else {
-        alert("Error settling up");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Server Error");
-    } finally {
-      setLoading(false);
+  // 🔥 UPDATED: Real UPI Payment Logic
+  const handleSettle = async (friendId, friendName, amount, friendUpi) => {
+    const absAmount = Math.abs(amount).toFixed(2);
+    
+    // 1. Agar UPI ID missing hai
+    if (!friendUpi) {
+        return alert(`Bhai, ${friendName} ki UPI ID missing hai! Real payment nahi ho sakti.`);
     }
+
+    // 2. User confirmation
+    if (!window.confirm(`Redirecting to UPI apps to pay ₹${absAmount} to ${friendName}?`)) return;
+
+    // 3. UPI Deep Link (Google Pay, PhonePe, Paytm automatically handle this)
+    const upiLink = `upi://pay?pa=${friendUpi}&pn=${encodeURIComponent(friendName)}&am=${absAmount}&cu=INR&tn=Settled%20via%20Contrimate`;
+    
+    window.location.href = upiLink;
+
+    // 4. Record the settlement in database after a small delay
+    setTimeout(async () => {
+      if (window.confirm("Payment complete kar di? Record update kar dein?")) {
+        setLoading(true);
+        try {
+          const settlementData = {
+            description: `Settled with ${friendName} (Real Payment)`,
+            totalAmount: parseFloat(absAmount),
+            category: "Settlement",
+            paidBy: { id: user.id },
+            splits: [{ user: { id: friendId }, amountOwed: parseFloat(absAmount) }]
+          };
+
+          const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settlementData)
+          });
+
+          if (res.ok) {
+            alert("Settlement Recorded! 🎉");
+            fetchDebts(user.id);
+          }
+        } catch (e) {
+          alert("Error recording settlement");
+        } finally {
+          setLoading(false);
+        }
+      }
+    }, 3000); 
   };
 
   const handleRequest = async (friendId, friendName, amount) => {
@@ -138,7 +152,6 @@ const SettleUp = () => {
                 borderLeft: isOwed ? '6px solid #10b981' : isDebt ? '6px solid #f43f5e' : '6px solid #475569'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                  {/* 🔥 Real PFP Rendered Here */}
                   {renderAvatar(friend, '50px')}
                   <div>
                     <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700' }}>{friend.name}</h4>
@@ -165,7 +178,7 @@ const SettleUp = () => {
 
                   {isDebt && (
                     <button
-                      onClick={() => handleSettle(friend.userId, friend.name, balance)}
+                      onClick={() => handleSettle(friend.userId, friend.name, balance, friend.upiId)}
                       style={{
                         background: '#f43f5e', color: 'white',
                         border: 'none', padding: '10px 18px', borderRadius: '12px',
