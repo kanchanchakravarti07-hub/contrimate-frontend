@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Trash2, X, CheckCircle, Wallet, Clock, Loader, Eye, Edit2 } from 'lucide-react';
+import { Plus, Users, UserPlus, Trash2, X, CheckCircle, Wallet, Clock, Loader, Eye, Edit2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Groups = () => {
@@ -13,6 +13,8 @@ const Groups = () => {
 
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showFriendModal, setShowFriendModal] = useState(false); 
+  
+  // 🔥 State for Editing
   const [editingGroup, setEditingGroup] = useState(null);
 
   const [viewFriend, setViewFriend] = useState(null);
@@ -48,6 +50,7 @@ const Groups = () => {
       
       setLoading(false);
     } catch (err) {
+      console.error("Error loading data", err);
       setGroups([]);
       setFriends([]);
       setLoading(false);
@@ -144,6 +147,7 @@ const Groups = () => {
     } catch (err) { alert("Server Error"); }
   };
 
+  // 🔥 Create Modal Opener
   const openCreateModal = () => {
       setEditingGroup(null);
       setGroupName('');
@@ -151,11 +155,20 @@ const Groups = () => {
       setShowGroupModal(true);
   };
 
+  // 🔥 Edit Modal Opener
   const openEditModal = (group) => {
       setEditingGroup(group);
       setGroupName(group.name);
-      const currentMemberIds = group.members ? group.members.map(m => m.id) : [];
-      setSelectedFriendIds(currentMemberIds.filter(id => id !== currentUser.id));
+      
+      // Extract IDs for pre-selection
+      let currentMemberIds = [];
+      if (group.members) {
+          currentMemberIds = group.members.map(m => m.id ? m.id : m);
+      } else if (group.memberIds) {
+          currentMemberIds = group.memberIds;
+      }
+      // Filter out self
+      setSelectedFriendIds(currentMemberIds.filter(id => String(id) !== String(currentUser.id)));
       setShowGroupModal(true);
   };
 
@@ -222,7 +235,6 @@ const Groups = () => {
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
             
-            {/* GROUPS LIST */}
             {activeTab === 'GROUPS' && Array.isArray(groups) && groups.map(group => (
                  <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
@@ -234,7 +246,7 @@ const Groups = () => {
                          </div>
                      </div>
                      
-                     {/* 🔥 EDIT & DELETE ACTIONS (Only for Admin) */}
+                     {/* 🔥 PENCIL (Edit) & TRASH (Delete) ICONS */}
                      {String(group.adminId) === String(currentUser?.id) && (
                         <div style={{display:'flex', gap:'10px'}}>
                             <div onClick={() => openEditModal(group)} style={{cursor:'pointer', padding:'8px', background:'rgba(59, 130, 246, 0.1)', borderRadius:'8px'}}>
