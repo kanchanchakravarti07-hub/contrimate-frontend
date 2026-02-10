@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Check, User, LayoutGrid, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Circle, User, LayoutGrid, ChevronRight } from 'lucide-react'; // CheckCircle import kiya
 import { API_BASE_URL } from '../config';
 
 const AddExpense = () => {
@@ -8,101 +8,129 @@ const AddExpense = () => {
 
   // --- FLOW & DATA STATES ---
   const [flowStep, setFlowStep] = useState('CHOICE'); 
-  const [users, setUsers] = useState([]); // Ye current selected users honge (Group wale ya Friends)
-  const [allUsers, setAllUsers] = useState([]); // Lookup ke liye saare users
+  const [users, setUsers] = useState([]); 
+  const [allUsers, setAllUsers] = useState([]); 
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
 
   // --- FORM STATES ---
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Food'); // Default
+  const [amount, setAmount] = useState(''); // Equal split ke liye total
+  const [category, setCategory] = useState('Food'); 
   const [payerId, setPayerId] = useState('');
   const [splitMode, setSplitMode] = useState('EQUAL'); 
+  
+  // 🔥 New: Diff Split ke liye amounts
   const [manualAmounts, setManualAmounts] = useState({});
+  // 🔥 New: Equal Split ke liye selected users IDs
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
     if (loggedInUser) {
         setPayerId(loggedInUser.id);
-
-        // 1. Fetch My Groups
+        
         fetch(`${API_BASE_URL}/api/groups/my-groups?userId=${loggedInUser.id}`)
           .then(res => res.json())
           .then(data => setGroups(data))
-          .catch(err => console.error("Groups Error:", err));
+          .catch(err => console.error(err));
 
-        // 2. Fetch All Users (Taaki Member IDs ko Naam se match kar sakein)
         fetch(`${API_BASE_URL}/api/users/all`)
           .then(res => res.json())
           .then(data => setAllUsers(data))
-          .catch(err => console.error("Users Error:", err));
+          .catch(err => console.error(err));
     }
   }, []);
 
-  // --- OPTION 1: PERSONAL / FRIENDS SPLIT ---
+  // --- SELECTION LOGIC ---
+  const initializeUsers = (userList) => {
+      setUsers(userList);
+      // By default sabko select kar lo equal split ke liye
+      setSelectedUserIds(userList.map(u => u.id));
+      // Manual amounts reset kar do
+      setManualAmounts({});
+  };
+
   const handleNoGroup = () => {
     const loggedInUser = JSON.parse(localStorage.getItem('user'));
-    
     fetch(`${API_BASE_URL}/api/users/my-friends?email=${loggedInUser.email}`)
       .then(res => res.json())
       .then(friends => {
-        // Khud ko aur doston ko list mein daalo
         const all = [loggedInUser, ...friends];
-        setUsers(all);
+        initializeUsers(all);
         setSelectedGroup(null);
         setFlowStep('FORM');
       });
   };
 
-  // --- OPTION 2: GROUP SPLIT (Fixed Logic) ---
   const handleGroupSelect = (group) => {
     setSelectedGroup(group);
-
-    // 🔥 MAIN FIX: group.memberIds ko actual user objects me convert karna
     if (group.memberIds && allUsers.length > 0) {
         const groupMembers = allUsers.filter(user => group.memberIds.includes(user.id));
-        setUsers(groupMembers);
+        initializeUsers(groupMembers);
     } else {
-        setUsers([]); // Fallback
+        setUsers([]);
     }
-
     setFlowStep('FORM');
   };
 
+  // 🔥 Equal Split: Toggle User Selection
+  const toggleUserSelection = (userId) => {
+      if (selectedUserIds.includes(userId)) {
+          setSelectedUserIds(selectedUserIds.filter(id => id !== userId));
+      } else {
+          setSelectedUserIds([...selectedUserIds, userId]);
+      }
+  };
+
+  // 🔥 Diff Split: Handle Manual Amount Change
   const handleManualChange = (userId, val) => {
     setManualAmounts({ ...manualAmounts, [userId]: val });
+  };
+
+  // Calculate Total for Diff Mode automatically
+  const getDiffTotal = () => {
+      let total = 0;
+      Object.values(manualAmounts).forEach(val => {
+          total += parseFloat(val) || 0;
+      });
+      return total;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description) return alert("Description daalo bhai!");
-    if (!amount || amount <= 0) return alert("Amount sahi daalo!");
 
-    let finalTotal = parseFloat(amount);
+    let finalTotal = 0;
     let splits = [];
 
-    // Filter: Jin users ko select kiya hai (abhi ke liye maan rahe hain sab selected hain)
-    const splitWithIds = users.map(u => u.id); 
-
     if (splitMode === 'EQUAL') {
-      const share = parseFloat((finalTotal / splitWithIds.length).toFixed(2));
-      splits = splitWithIds.map(id => ({ 
-          user: { id }, // Backend expects User object inside Split
+      finalTotal = parseFloat(amount);
+      if (!finalTotal || finalTotal <= 0) return alert("Total Amount sahi daalo!");
+      if (selectedUserIds.length === 0) return alert("Kam se kam ek banda toh select karo!");
+
+      const share = parseFloat((finalTotal / selectedUserIds.length).toFixed(2));
+      
+      // Sirf selected users ko split mein daalo
+      splits = selectedUserIds.map(id => ({ 
+          user: { id }, 
           amountOwed: share 
       }));
+
     } else {
-      let calculatedTotal = 0;
-      for (const id of splitWithIds) {
-        const val = parseFloat(manualAmounts[id] || 0);
-        calculatedTotal += val;
-        splits.push({ user: { id }, amountOwed: val });
-      }
-      // Diff Bill me total amount user ke input ka sum hona chahiye
-      if(Math.abs(calculatedTotal - finalTotal) > 10) {
-          return alert(`Amount match nahi ho raha! Total: ${finalTotal}, Split: ${calculatedTotal}`);
-      }
+      // UNEQUAL MODE
+      finalTotal = getDiffTotal();
+      if (finalTotal <= 0) return alert("Amounts toh daalo bhai!");
+
+      // Har user ka amount check karo
+      users.forEach(u => {
+          const val = parseFloat(manualAmounts[u.id] || 0);
+          if (val > 0) {
+              splits.push({ user: { id: u.id }, amountOwed: val });
+          }
+      });
     }
 
     setIsLoading(true);
@@ -115,8 +143,6 @@ const AddExpense = () => {
       splits: splits
     };
 
-    console.log("Sending Data:", expenseData); // Debugging ke liye
-
     try {
       const res = await fetch(`${API_BASE_URL}/api/expenses/add`, {
         method: 'POST',
@@ -128,11 +154,10 @@ const AddExpense = () => {
         navigate('/home');
       } else {
         const errText = await res.text();
-        alert("Error saving: " + errText);
+        alert("Error: " + errText);
       }
     } catch (error) {
-      console.error(error);
-      alert("Network Error saving expense");
+      alert("Network Error");
     } finally {
       setIsLoading(false);
     }
@@ -141,98 +166,77 @@ const AddExpense = () => {
   return (
     <div style={{ position: 'relative', minHeight: '100vh', background: '#0f172a', fontFamily: 'sans-serif' }}>
       
-      {/* 1️⃣ CHOICE & GROUP LIST MODAL (OVERLAY) */}
+      {/* 1️⃣ CHOICE & GROUP MODAL */}
       {(flowStep === 'CHOICE' || flowStep === 'GROUP_LIST') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: '20px' }}>
-          <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', borderRadius: '32px', padding: '30px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', borderRadius: '32px', padding: '30px', border: '1px solid rgba(255,255,255,0.1)' }}>
             
             {flowStep === 'CHOICE' ? (
               <>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: 'white', marginBottom: '30px', textAlign: 'center' }}>Add Expense To</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  
-                  {/* Option 1: Friends */}
                   <div onClick={handleNoGroup} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}>
-                        <User size={28} color="#10b981" />
-                    </div>
-                    <div>
-                        <h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>Personal / Friends</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Split with friends directly</p>
-                    </div>
+                    <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}><User size={28} color="#10b981" /></div>
+                    <div><h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>Personal / Friends</h3><p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Split with friends directly</p></div>
                   </div>
-
-                  {/* Option 2: Groups */}
                   <div onClick={() => setFlowStep('GROUP_LIST')} style={{ background: 'rgba(255,255,255,0.03)', padding: '24px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                     <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}>
-                        <LayoutGrid size={28} color="#10b981" />
-                    </div>
-                    <div>
-                        <h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>In a Group</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Select from your groups</p>
-                    </div>
+                     <div style={{background: 'rgba(16, 185, 129, 0.2)', padding: '10px', borderRadius: '12px'}}><LayoutGrid size={28} color="#10b981" /></div>
+                    <div><h3 style={{ margin: '0', fontSize: '18px', color: 'white' }}>In a Group</h3><p style={{ color: '#94a3b8', fontSize: '13px', margin: '4px 0 0 0' }}>Select from your groups</p></div>
                   </div>
-
                 </div>
               </>
             ) : (
               <>
-                {/* Group Selection List */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px' }}>
                   <ArrowLeft size={22} onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer', color: 'white' }} />
                   <h3 style={{ margin: 0, color: 'white', fontSize: '20px', fontWeight: '700' }}>Select Group</h3>
                 </div>
-                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', paddingRight: '5px' }}>
-                  {groups.length > 0 ? groups.map(g => (
+                <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {groups.map(g => (
                     <div key={g.id} onClick={() => handleGroupSelect(g)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: 'rgba(255,255,255,0.03)', borderRadius: '18px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ width: '40px', height: '40px', background: '#10b981', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                            {g.name ? g.name.charAt(0).toUpperCase() : 'G'}
-                        </div>
-                        <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
-                      </div>
+                      <span style={{ color: 'white', fontWeight: '600' }}>{g.name}</span>
                       <ChevronRight size={18} color="#475569" />
                     </div>
-                  )) : <p style={{ color: '#94a3b8', textAlign: 'center' }}>No groups found</p>}
+                  ))}
                 </div>
               </>
             )}
-            <div style={{ textAlign: 'center', marginTop: '25px' }}>
-              <span onClick={() => navigate('/home')} style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}>Cancel</span>
-            </div>
+            <div style={{ textAlign: 'center', marginTop: '25px' }}><span onClick={() => navigate('/home')} style={{ color: '#64748b', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}>Cancel</span></div>
           </div>
         </div>
       )}
 
-      {/* 2️⃣ MAIN FORM PAGE (Visible when flowStep === 'FORM') */}
+      {/* 2️⃣ MAIN FORM */}
       {flowStep === 'FORM' && (
       <div className="container" style={{ padding: '0 20px 140px 20px', color: 'white', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0' }}>
           <ArrowLeft onClick={() => setFlowStep('CHOICE')} style={{ cursor: 'pointer' }} />
-          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>
-            {selectedGroup ? `Group: ${selectedGroup.name}` : 'Add Expense'}
-          </h2>
+          <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>{selectedGroup ? selectedGroup.name : 'Add Expense'}</h2>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Toggle Split Mode */}
           <div style={{ display: 'flex', background: '#1e293b', padding: '4px', borderRadius: '14px', marginBottom: '20px', border: '1px solid #334155' }}>
             <button type="button" onClick={() => setSplitMode('EQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'EQUAL' ? '#334155' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Equal Split</button>
-            <button type="button" onClick={() => { setSplitMode('UNEQUAL'); setAmount(''); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Diff Bill</button>
+            <button type="button" onClick={() => setSplitMode('UNEQUAL')} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: splitMode === 'UNEQUAL' ? '#10b981' : 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' }}>Diff Bill</button>
           </div>
 
           <div className="card" style={{ padding: '25px', borderRadius: '28px', background: '#1e293b', marginBottom: '20px', border: '1px solid #334155' }}>
             
-            {/* Amount Input */}
+            {/* 🔥 Logic Change: Equal me input dikhao, Diff me automatic total dikhao */}
             <div style={{ borderBottom: '1px solid #334155', paddingBottom: '20px', marginBottom: '20px' }}>
                 <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>TOTAL AMOUNT</label>
                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
                   <span style={{ fontSize: '36px', color: '#10b981', fontWeight: 'bold' }}>₹</span>
-                  <input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '36px', fontWeight: 'bold', outline: 'none', marginLeft: '12px' }} />
+                  
+                  {splitMode === 'EQUAL' ? (
+                      <input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '36px', fontWeight: 'bold', outline: 'none', marginLeft: '12px' }} />
+                  ) : (
+                      <span style={{ fontSize: '36px', color: 'white', fontWeight: 'bold', marginLeft: '12px' }}>{getDiffTotal()}</span>
+                  )}
                 </div>
             </div>
 
-            {/* Description Input */}
             <div>
               <label style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px' }}>DESCRIPTION</label>
               <input type="text" placeholder="e.g. Dinner, Movie" value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%', background: 'transparent', border: 'none', color: 'white', fontSize: '18px', outline: 'none', marginTop: '10px' }} />
@@ -242,23 +246,34 @@ const AddExpense = () => {
           <h3 style={{ fontSize: '16px', margin: '25px 0 15px 10px', display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={18} color="#10b981" /> Split With</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {users.length > 0 ? users.map(u => (
-              <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: '#1e293b', borderRadius: '20px', border: '1px solid #334155' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white' }}>
-                      {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+            {users.length > 0 ? users.map(u => {
+                const isSelected = selectedUserIds.includes(u.id);
+
+                return (
+                  <div 
+                    key={u.id} 
+                    onClick={() => splitMode === 'EQUAL' && toggleUserSelection(u.id)} 
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px', background: isSelected || splitMode === 'UNEQUAL' ? '#1e293b' : '#0f172a', borderRadius: '20px', border: isSelected ? '1px solid #10b981' : '1px solid #334155', cursor: splitMode === 'EQUAL' ? 'pointer' : 'default', opacity: (splitMode === 'EQUAL' && !isSelected) ? 0.6 : 1, transition: '0.2s' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white' }}>
+                          {u.name ? u.name.charAt(0).toUpperCase() : '?'}
+                      </div>
+                      <span style={{ fontWeight: '600' }}>{u.name}</span>
+                    </div>
+                    
+                    {splitMode === 'UNEQUAL' ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0f172a', padding: '8px 15px', borderRadius: '12px', border: '1px solid #334155' }}>
+                        <span style={{ color: '#10b981', fontWeight: 'bold' }}>₹</span>
+                        <input type="number" placeholder="0" value={manualAmounts[u.id] || ''} onChange={(e) => handleManualChange(u.id, e.target.value)} style={{ width: '70px', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none', textAlign: 'right' }} />
+                      </div>
+                    ) : (
+                        // Equal Mode Selection Checkbox UI
+                        isSelected ? <CheckCircle size={22} color="#10b981" fill="#10b981" stroke="black" /> : <Circle size={22} color="#64748b" />
+                    )}
                   </div>
-                  <span style={{ fontWeight: '600' }}>{u.name}</span>
-                </div>
-                
-                {splitMode === 'UNEQUAL' ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#0f172a', padding: '8px 15px', borderRadius: '12px', border: '1px solid #334155' }}>
-                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>₹</span>
-                    <input type="number" placeholder="0" value={manualAmounts[u.id] || ''} onChange={(e) => handleManualChange(u.id, e.target.value)} style={{ width: '70px', background: 'transparent', border: 'none', color: 'white', fontWeight: 'bold', outline: 'none', textAlign: 'right' }} />
-                  </div>
-                ) : <Check size={20} color="#10b981" />}
-              </div>
-            )) : <p style={{color: '#64748b', textAlign: 'center'}}>No members found</p>}
+                );
+            }) : <p style={{color: '#64748b', textAlign: 'center'}}>No members found</p>}
           </div>
 
           <div style={{ marginTop: '30px' }}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Bell, LogOut, MessageCircle, ArrowUpRight, ArrowDownLeft, 
-  Utensils, Car, ShoppingBag, Zap, Receipt, Coffee, Gift
+  Utensils, Car, ShoppingBag, Zap, Receipt
 } from 'lucide-react';
 import { API_BASE_URL } from '../config'; 
 
@@ -41,10 +41,17 @@ const Home = () => {
     fetch(`${API_BASE_URL}/api/expenses/user/${userId}`)
       .then(res => res.json())
       .then(data => {
-        // Remove Duplicates (Safety Check)
-        const uniqueData = Array.from(new Map(data.map(item => [item.id, item])).values());
+        console.log("🔥 API Data Received:", data); // Check Console to see if data is coming
 
-        // Sort by Date
+        if (!Array.isArray(data)) {
+            console.error("Data is not an array:", data);
+            setExpenses([]);
+            setLoading(false);
+            return;
+        }
+
+        // Remove Duplicates & Sort
+        const uniqueData = Array.from(new Map(data.map(item => [item.id, item])).values());
         const sortedData = uniqueData.sort((a, b) => {
             const dateA = parseDate(a.createdAt).getTime();
             const dateB = parseDate(b.createdAt).getTime();
@@ -52,10 +59,7 @@ const Home = () => {
         });
         
         setExpenses(sortedData);
-        
-        // 🔥 Calculate Balance using Map Strategy
         calculateRealBalance(sortedData, userId);
-        
         setLoading(false);
       })
       .catch(err => {
@@ -66,58 +70,54 @@ const Home = () => {
     // 2. Fetch Notifications
     fetch(`${API_BASE_URL}/api/notifications/${userId}`)
         .then(res => res.json())
-        .then(data => setNotifCount(data ? data.length : 0))
+        .then(data => setNotifCount(Array.isArray(data) ? data.length : 0))
         .catch(() => setNotifCount(0));
   };
 
-  // 🔥 CORE LOGIC: Friend-wise Net Calculation (The Proper Way)
+  // 🔥 CORE LOGIC (SAFE VERSION)
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
-      let balanceMap = {}; // { friendId: amount } (+ve means they owe me, -ve means I owe them)
+      let balanceMap = {}; 
 
       if (!Array.isArray(data)) return;
 
       data.forEach(expense => {
+          // Safety Check: Agar expense ya paidBy missing hai to skip karo
           if (!expense || !expense.paidBy) return;
 
-          const payerId = Number(expense.paidBy.id);
+          // PaidBy ID nikalne ka safe tareeka (Object ho ya Direct ID)
+          const payerId = expense.paidBy.id ? Number(expense.paidBy.id) : Number(expense.paidBy);
           
           if (expense.splits && Array.isArray(expense.splits)) {
               expense.splits.forEach(split => {
                   if (!split.user) return;
 
-                  const splitUserId = Number(split.user.id);
+                  // User ID nikalne ka safe tareeka
+                  const splitUserId = split.user.id ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
-                  // Logic:
-                  // 1. Maine pay kiya (Payer=Me), Split friend ka hai -> Friend owes me (+ve)
-                  // 2. Friend ne pay kiya (Payer=Friend), Split mera hai -> I owe friend (-ve)
-                  
+                  // Calculation Logic
                   if (payerId === myId && splitUserId !== myId) {
-                      // I paid for them
+                      // Maine pay kiya, dost udhaar hai (Positive)
                       balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
                   } 
                   else if (splitUserId === myId && payerId !== myId) {
-                      // They paid for me
+                      // Dost ne pay kiya, main udhaar hu (Negative)
                       balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
                   }
               });
           }
       });
 
-      // Now Aggregate the Map
       let totalOwe = 0;
       let totalGet = 0;
 
       Object.values(balanceMap).forEach(bal => {
-          if (bal > 0) {
-              totalGet += bal; // Positive balance means I get back
-          } else {
-              totalOwe += Math.abs(bal); // Negative balance means I owe
-          }
+          if (bal > 0) totalGet += bal;
+          else totalOwe += Math.abs(bal);
       });
 
-      console.log("Friend-wise Calc -> Owe:", totalOwe, "Get:", totalGet);
+      console.log("Calculated -> Owe:", totalOwe, "Get:", totalGet);
 
       setYouOwe(totalOwe);
       setYouAreOwed(totalGet);
@@ -126,7 +126,7 @@ const Home = () => {
 
   // --- Helpers ---
   const parseDate = (dateInput) => {
-      if (!dateInput) return new Date(0); 
+      if (!dateInput) return new Date(); 
       if (Array.isArray(dateInput)) {
           const [year, month, day, hour, minute, second] = dateInput;
           return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
@@ -135,15 +135,17 @@ const Home = () => {
   };
 
   const formatDate = (dateInput) => {
-      const date = parseDate(dateInput);
-      if (date.getFullYear() === 1970) return 'Old Record';
-      return `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+      try {
+        const date = parseDate(dateInput);
+        if (isNaN(date.getTime())) return 'Just now';
+        return `${date.getDate()} ${date.toLocaleString('default', { month: 'short' })}, ${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+      } catch (e) { return 'Date Error'; }
   };
 
   const getCategoryIcon = (desc) => {
     const d = desc ? desc.toLowerCase() : "";
-    if (d.includes('food') || d.includes('pizza') || d.includes('burger')) return <Utensils size={20} color="#f59e0b" />;
-    if (d.includes('travel') || d.includes('cab') || d.includes('fuel')) return <Car size={20} color="#3b82f6" />;
+    if (d.includes('food') || d.includes('pizza')) return <Utensils size={20} color="#f59e0b" />;
+    if (d.includes('travel') || d.includes('cab')) return <Car size={20} color="#3b82f6" />;
     if (d.includes('shopping')) return <ShoppingBag size={20} color="#ec4899" />;
     if (d.includes('bill') || d.includes('rent')) return <Zap size={20} color="#eab308" />;
     if (d.includes('settle')) return <ArrowUpRight size={20} color="#10b981" />; 
@@ -164,18 +166,20 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.json()).then(setComments);
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.json()).then(setComments).catch(e => console.log(e));
   };
 
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
-    await fetch(`${API_BASE_URL}/api/comments/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newComment, userId: currentUser.id, expenseId: activeExpenseId })
-    });
-    setNewComment('');
-    fetchComments(activeExpenseId);
+    try {
+        await fetch(`${API_BASE_URL}/api/comments/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: newComment, userId: currentUser.id, expenseId: activeExpenseId })
+        });
+        setNewComment('');
+        fetchComments(activeExpenseId);
+    } catch(e) { console.error("Comment Error", e); }
   };
 
   const hasUnreadChat = (expense) => {
@@ -239,8 +243,11 @@ const Home = () => {
       {loading ? <p style={{ textAlign: 'center', color: '#64748b' }}>Loading...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {expenses.length > 0 ? expenses.slice(0, 10).map((expense) => {
+            // SAFE CHECK: Check if paidBy exists
             const isMyExpense = expense.paidBy?.id === currentUser?.id;
+            const payerName = expense.paidBy?.name || "Unknown";
             const hasNewMsg = hasUnreadChat(expense);
+            
             return (
                 <div key={expense.id} className="card" style={{ padding: '16px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', border: '1px solid #334155' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -250,7 +257,7 @@ const Home = () => {
                         <div>
                             <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'white' }}>{expense.description}</h4>
                             <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#94a3b8' }}>
-                                {isMyExpense ? 'You paid' : `${expense.paidBy?.name} paid`} • {formatDate(expense.createdAt)}
+                                {isMyExpense ? 'You paid' : `${payerName} paid`} • {formatDate(expense.createdAt)}
                             </p>
                         </div>
                     </div>
