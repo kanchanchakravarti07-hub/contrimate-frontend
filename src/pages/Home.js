@@ -37,15 +37,11 @@ const Home = () => {
     setLoading(true);
     
     fetch(`${API_BASE_URL}/api/expenses/user/${userId}`)
-      .then(res => res.json())
+      .then(res => res.ok ? res.json() : [])
       .then(data => {
-        if (!Array.isArray(data)) {
-            setExpenses([]);
-            setLoading(false);
-            return;
-        }
-
-        const uniqueData = Array.from(new Map(data.map(item => [item.id, item])).values());
+        const safeData = Array.isArray(data) ? data : [];
+        
+        const uniqueData = Array.from(new Map(safeData.map(item => [item.id, item])).values());
         const sortedData = uniqueData.sort((a, b) => {
             const dateA = parseDate(a.createdAt).getTime();
             const dateB = parseDate(b.createdAt).getTime();
@@ -57,49 +53,43 @@ const Home = () => {
         setLoading(false);
       })
       .catch(err => {
+          console.error(err);
           setLoading(false);
       });
 
     fetch(`${API_BASE_URL}/api/notifications/${userId}`)
-        .then(res => res.json())
+        .then(res => res.ok ? res.json() : [])
         .then(data => setNotifCount(Array.isArray(data) ? data.length : 0))
         .catch(() => setNotifCount(0));
   };
 
   const calculateRealBalance = (data, userId) => {
       const myId = Number(userId);
-      let balanceMap = {}; 
+      let totalOwe = 0;
+      let totalGet = 0;
 
       if (!Array.isArray(data)) return;
 
       data.forEach(expense => {
           if (!expense || !expense.paidBy) return;
 
-          const payerId = expense.paidBy.id ? Number(expense.paidBy.id) : Number(expense.paidBy);
+          const payerId = typeof expense.paidBy === 'object' ? Number(expense.paidBy.id) : Number(expense.paidBy);
           
           if (expense.splits && Array.isArray(expense.splits)) {
               expense.splits.forEach(split => {
                   if (!split.user) return;
 
-                  const splitUserId = split.user.id ? Number(split.user.id) : Number(split.user);
+                  const splitUserId = typeof split.user === 'object' ? Number(split.user.id) : Number(split.user);
                   const amount = Number(split.amount) || Number(split.amountOwed) || 0;
 
                   if (payerId === myId && splitUserId !== myId) {
-                      balanceMap[splitUserId] = (balanceMap[splitUserId] || 0) + amount;
+                      totalGet += amount;
                   } 
                   else if (splitUserId === myId && payerId !== myId) {
-                      balanceMap[payerId] = (balanceMap[payerId] || 0) - amount;
+                      totalOwe += amount;
                   }
               });
           }
-      });
-
-      let totalOwe = 0;
-      let totalGet = 0;
-
-      Object.values(balanceMap).forEach(bal => {
-          if (bal > 0) totalGet += bal;
-          else totalOwe += Math.abs(bal);
       });
 
       setYouOwe(totalOwe);
