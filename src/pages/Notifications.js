@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Bell, Info, Clock } from 'lucide-react';
+import { ArrowLeft, Trash2, Bell, Info, Clock, CheckCircle2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Notifications = () => {
@@ -13,8 +13,17 @@ const Notifications = () => {
     if (currentUser) {
       fetchPaymentRequests(currentUser.id);
       fetchSystemAlerts(currentUser.id);
+      
+      // 🔥 Mark notifications as read immediately when this page opens
+      markAsRead(currentUser.id);
     }
   }, []);
+
+  const markAsRead = async (userId) => {
+      try {
+          await fetch(`${API_BASE_URL}/api/notifications/mark-read/${userId}`, { method: 'PUT' });
+      } catch (e) { console.error("Could not mark read"); }
+  };
 
   const fetchPaymentRequests = (userId) => {
     fetch(`${API_BASE_URL}/api/notifications/${userId}`)
@@ -79,6 +88,7 @@ const Notifications = () => {
 
   return (
     <div className="container" style={{ paddingBottom: '40px', background: '#0f172a', minHeight: '100vh', color: 'white' }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '20px 0', marginBottom: '10px' }}>
         <ArrowLeft onClick={() => navigate('/home')} style={{ cursor: 'pointer' }} />
         <h2 style={{ fontSize: '24px', fontWeight: '800', margin: 0 }}>Activity</h2>
@@ -126,6 +136,7 @@ const Notifications = () => {
                 </div>
               </div>
 
+              {/* Show dot only if isRead is false (though we mark all read on load, good for realtime updates if socket used later) */}
               {!n.isRead && <div style={{ width: '10px', height: '10px', background: '#3b82f6', borderRadius: '50%', boxShadow: '0 0 10px #3b82f6' }}></div>}
 
               <div 

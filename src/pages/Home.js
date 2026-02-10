@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Bell, LogOut, MessageCircle, ArrowUpRight, ArrowDownLeft, 
@@ -17,6 +17,8 @@ const Home = () => {
   const [youAreOwed, setYouAreOwed] = useState(0);
 
   const [notifCount, setNotifCount] = useState(0);
+  const prevCountRef = useRef(0); // Sound bajane ke liye track rakhenge
+
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState(null);
   const [comments, setComments] = useState([]);
@@ -30,16 +32,40 @@ const Home = () => {
     } else {
       setCurrentUser(user);
       fetchData(user.id);
+
+      // 🔥 Har 5 second mein check karo ki naya msg aaya kya
+      const interval = setInterval(() => fetchNotifications(user.id), 5000);
+      return () => clearInterval(interval);
     }
   }, []);
+
+  // 🔥 Notification Fetch & Sound Logic
+  const fetchNotifications = async (userId) => {
+      try {
+          const res = await fetch(`${API_BASE_URL}/api/notifications/unread-count/${userId}`);
+          if (res.ok) {
+              const count = await res.json();
+              setNotifCount(count);
+
+              // 🎵 Agar count badha hai, to sound bajao
+              if (count > prevCountRef.current) {
+                  const audio = new Audio('/notification.mp3');
+                  audio.play().catch(e => console.log("Audio permission needed"));
+              }
+              prevCountRef.current = count;
+          }
+      } catch (e) { console.error("Notif Error"); }
+  };
 
   const fetchData = async (userId) => {
     setLoading(true);
     try {
-      const [expensesRes, notifRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/expenses/user/${userId}`).then(res => res.ok ? res.json() : []),
-        fetch(`${API_BASE_URL}/api/notifications/${userId}`).then(res => res.ok ? res.json() : [])
+      const [expensesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/expenses/user/${userId}`).then(res => res.ok ? res.json() : [])
       ]);
+      
+      // Initial notification check
+      fetchNotifications(userId);
 
       const safeExpenses = Array.isArray(expensesRes) ? expensesRes : [];
       const uniqueData = Array.from(new Map(safeExpenses.map(item => [item.id, item])).values());
@@ -51,9 +77,6 @@ const Home = () => {
       
       setExpenses(sortedData);
       calculateRealBalance(sortedData, userId);
-
-      const safeNotifs = Array.isArray(notifRes) ? notifRes : [];
-      setNotifCount(safeNotifs.filter(n => !n.isRead).length);
 
     } catch (err) {
       console.error(err);
@@ -136,10 +159,7 @@ const Home = () => {
   };
 
   const fetchComments = (expenseId) => {
-    fetch(`${API_BASE_URL}/api/comments/${expenseId}`)
-      .then(res => res.ok ? res.json() : [])
-      .then(setComments)
-      .catch(() => setComments([]));
+    fetch(`${API_BASE_URL}/api/comments/${expenseId}`).then(res => res.ok ? res.json() : []).then(setComments).catch(() => {});
   };
 
   const handleSendComment = async () => {
@@ -182,10 +202,25 @@ const Home = () => {
           <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '4px 0 0 0', color: 'white' }}>{currentUser?.name?.split(' ')[0]} 👋</h2>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>
+             
+             {/* 🔥 NOTIFICATION BADGE UI */}
              <div onClick={() => navigate('/notifications')} style={{ position: 'relative', cursor: 'pointer', background:'#1e293b', padding:'10px', borderRadius:'50%' }}>
                 <Bell size={20} color="white" />
-                {notifCount > 0 && <span style={{ position: 'absolute', top: '0', right: '0', background: '#f43f5e', width: '10px', height: '10px', borderRadius: '50%' }}></span>}
+                {notifCount > 0 && (
+                    <span style={{ 
+                        position: 'absolute', top: '-2px', right: '-2px', 
+                        background: '#f43f5e', color: 'white', 
+                        fontSize: '10px', fontWeight: 'bold', 
+                        width: '18px', height: '18px', 
+                        borderRadius: '50%', display: 'flex', 
+                        alignItems: 'center', justifyContent: 'center',
+                        border: '2px solid #0f172a'
+                    }}>
+                        {notifCount > 9 ? '9+' : notifCount}
+                    </span>
+                )}
              </div>
+
              <div onClick={handleLogout} style={{ cursor:'pointer', background:'#1e293b', padding:'10px', borderRadius:'50%' }}><LogOut size={20} color="#f43f5e" /></div>
         </div>
       </div>
@@ -248,6 +283,7 @@ const Home = () => {
         </div>
       )}
 
+      {/* FAB & Bottom Nav */}
       <div style={{ position: 'fixed', bottom: '90px', right: '20px', zIndex: 10 }}>
         <button onClick={() => navigate('/add-expense')} style={{ width: '60px', height: '60px', borderRadius: '20px', background: '#10b981', border: 'none', boxShadow: '0 10px 25px rgba(16, 185, 129, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white', fontSize:'30px' }}><Plus size={28} strokeWidth={3} /></button>
       </div>
