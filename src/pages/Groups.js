@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, UserPlus, Trash2, X, CheckCircle, Wallet, Clock, Loader, Eye } from 'lucide-react';
+import { Plus, Users, Trash2, X, CheckCircle, Wallet, Clock, Loader, Eye, Edit2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 const Groups = () => {
@@ -13,7 +13,8 @@ const Groups = () => {
 
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showFriendModal, setShowFriendModal] = useState(false); 
-  
+  const [editingGroup, setEditingGroup] = useState(null);
+
   const [viewFriend, setViewFriend] = useState(null);
   const [friendStats, setFriendStats] = useState({ spent: 0, friendsCount: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
@@ -47,7 +48,6 @@ const Groups = () => {
       
       setLoading(false);
     } catch (err) {
-      console.error("Error loading data", err);
       setGroups([]);
       setFriends([]);
       setLoading(false);
@@ -144,21 +144,54 @@ const Groups = () => {
     } catch (err) { alert("Server Error"); }
   };
 
-  const handleCreateGroup = async () => {
+  const openCreateModal = () => {
+      setEditingGroup(null);
+      setGroupName('');
+      setSelectedFriendIds([]);
+      setShowGroupModal(true);
+  };
+
+  const openEditModal = (group) => {
+      setEditingGroup(group);
+      setGroupName(group.name);
+      const currentMemberIds = group.members ? group.members.map(m => m.id) : [];
+      setSelectedFriendIds(currentMemberIds.filter(id => id !== currentUser.id));
+      setShowGroupModal(true);
+  };
+
+  const handleSaveGroup = async () => {
     if (!groupName) return alert("Group name daalo bhai!");
-    if (selectedFriendIds.length === 0) return alert("Kam se kam ek dost select karo!");
-    const memberIds = [...selectedFriendIds, currentUser.id];
+    
+    const memberIds = [...selectedFriendIds];
+    if(!memberIds.includes(currentUser.id)) memberIds.push(currentUser.id);
+
     try {
-        const res = await fetch(`${API_BASE_URL}/api/groups/add`, {
-            method: 'POST',
+        let url = `${API_BASE_URL}/api/groups/add`;
+        let method = 'POST';
+
+        if (editingGroup) {
+            url = `${API_BASE_URL}/api/groups/update/${editingGroup.id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: groupName, adminId: currentUser.id, memberIds: memberIds })
+            body: JSON.stringify({ 
+                name: groupName, 
+                adminId: currentUser.id, 
+                memberIds: memberIds 
+            })
         });
+
         if (res.ok) {
             setShowGroupModal(false);
             setGroupName('');
             setSelectedFriendIds([]);
+            setEditingGroup(null);
             fetchData();
+        } else {
+            alert("Error saving group");
         }
     } catch (err) { alert("Server Error"); }
   };
@@ -189,6 +222,7 @@ const Groups = () => {
       {loading ? <div style={{textAlign:'center', marginTop:'50px'}}><Loader className="animate-spin" color="#10b981"/></div> : (
         <div style={{display:'flex', flexDirection:'column', gap:'12px'}}>
             
+            {/* GROUPS LIST */}
             {activeTab === 'GROUPS' && Array.isArray(groups) && groups.map(group => (
                  <div key={group.id} style={{padding:'20px', background:'#1e293b', borderRadius:'16px', border:'1px solid #334155'}}>
                  <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'15px'}}>
@@ -199,7 +233,18 @@ const Groups = () => {
                              <span style={{fontSize:'12px', color:'#94a3b8'}}>{group.members?.length || 0} members</span>
                          </div>
                      </div>
-                     {group.adminId === currentUser?.id && <Trash2 size={18} color="#f43f5e" onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer'}}/>}
+                     
+                     {/* 🔥 EDIT & DELETE ACTIONS (Only for Admin) */}
+                     {String(group.adminId) === String(currentUser?.id) && (
+                        <div style={{display:'flex', gap:'10px'}}>
+                            <div onClick={() => openEditModal(group)} style={{cursor:'pointer', padding:'8px', background:'rgba(59, 130, 246, 0.1)', borderRadius:'8px'}}>
+                                <Edit2 size={18} color="#3b82f6" />
+                            </div>
+                            <div onClick={() => handleDelete('GROUP', group.id)} style={{cursor:'pointer', padding:'8px', background:'rgba(244, 63, 94, 0.1)', borderRadius:'8px'}}>
+                                <Trash2 size={18} color="#f43f5e" />
+                            </div>
+                        </div>
+                     )}
                  </div>
                  
                  <div style={{display:'flex', alignItems:'center', marginLeft:'5px'}}>
@@ -289,7 +334,7 @@ const Groups = () => {
       )}
 
       <div style={{position:'fixed', bottom:'90px', right:'20px', zIndex:50}}>
-        <button onClick={() => activeTab === 'GROUPS' ? setShowGroupModal(true) : setShowFriendModal(true)} style={{width:'60px', height:'60px', borderRadius:'20px', background:'#10b981', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'white', boxShadow:'0 10px 25px rgba(16, 185, 129, 0.4)'}}>
+        <button onClick={() => activeTab === 'GROUPS' ? openCreateModal() : setShowFriendModal(true)} style={{width:'60px', height:'60px', borderRadius:'20px', background:'#10b981', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'white', boxShadow:'0 10px 25px rgba(16, 185, 129, 0.4)'}}>
             {activeTab === 'GROUPS' ? <Plus size={30} /> : <UserPlus size={26} />}
         </button>
       </div>
@@ -323,39 +368,11 @@ const Groups = () => {
         </div>
       )}
 
-      {viewFriend && (
-        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
-            <div style={{width:'100%', maxWidth:'350px', background:'#1e293b', borderRadius:'24px', border:'1px solid #334155', overflow:'hidden'}}>
-                <div style={{padding:'20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #334155'}}>
-                    <h3 style={{margin:0}}>Profile</h3>
-                    <X onClick={() => setViewFriend(null)} style={{cursor:'pointer', color:'white'}}/>
-                </div>
-                <div style={{padding:'30px 20px', textAlign:'center'}}>
-                    <div style={{margin:'0 auto 15px'}}>{renderAvatar(viewFriend, '80px')}</div>
-                    <h2 style={{margin:0, color:'white'}}>{viewFriend.name}</h2>
-                    <p style={{color:'#94a3b8', marginBottom:'25px'}}>{viewFriend.email}</p>
-                    <div style={{display:'flex', gap:'10px'}}>
-                        <div style={{flex:1, background:'#0f172a', padding:'15px', borderRadius:'15px'}}>
-                            <Wallet size={20} color="#10b981" style={{marginBottom:'5px'}}/>
-                            <p style={{margin:0, fontWeight:'bold', color:'white'}}>{statsLoading ? '...' : `₹${friendStats.spent}`}</p>
-                            <span style={{fontSize:'10px', color:'#64748b'}}>Spent</span>
-                        </div>
-                        <div style={{flex:1, background:'#0f172a', padding:'15px', borderRadius:'15px'}}>
-                            <Users size={20} color="#3b82f6" style={{marginBottom:'5px'}}/>
-                            <p style={{margin:0, fontWeight:'bold', color:'white'}}>{statsLoading ? '...' : friendStats.friendsCount}</p>
-                            <span style={{fontSize:'10px', color:'#64748b'}}>Friends</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-      )}
-
       {showGroupModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:'20px'}}>
             <div style={{width:'100%', maxWidth:'380px', background:'#1e293b', borderRadius:'24px', padding:'25px', border:'1px solid #334155'}}>
                 <div style={{display:'flex', justifyContent:'space-between', marginBottom:'20px'}}>
-                    <h3 style={{margin:0, color:'white'}}>Create New Group</h3>
+                    <h3 style={{margin:0, color:'white'}}>{editingGroup ? 'Edit Group' : 'Create New Group'}</h3>
                     <X onClick={() => setShowGroupModal(false)} style={{cursor:'pointer', color:'white'}}/>
                 </div>
                 <input placeholder="Group Name" value={groupName} onChange={e => setGroupName(e.target.value)} style={{width:'100%', padding:'14px', background:'#0f172a', border:'1px solid #334155', borderRadius:'12px', color:'white', marginBottom:'20px', outline:'none'}} />
@@ -372,7 +389,9 @@ const Groups = () => {
                         </div>
                     ))}
                 </div>
-                <button onClick={handleCreateGroup} style={{width:'100%', padding:'15px', background:'#10b981', border:'none', borderRadius:'15px', color:'white', fontWeight:'bold', cursor:'pointer'}}>Create Group</button>
+                <button onClick={handleSaveGroup} style={{width:'100%', padding:'15px', background:'#10b981', border:'none', borderRadius:'15px', color:'white', fontWeight:'bold', cursor:'pointer'}}>
+                    {editingGroup ? 'Update Group' : 'Create Group'}
+                </button>
             </div>
         </div>
       )}
